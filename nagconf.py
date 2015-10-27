@@ -284,7 +284,16 @@ def discover_template_chain(nco):
                     pass
             # remove duplicates
             i_tpls = dedupe_sort_list_of_dict(i_tpls,dedupeField='tpname',orderField='idx')
+            # now strip out extra blank space chars
+            for tplll in i_tpls:
+                try:
+                    tplll['tpname'] = tplll.get('tpname').rstrip(' ')
+                except:
+                    pass
             thing.templateChain.value = i_tpls
+            logging.debug("Discovered template chain: " )
+            for tp in i_tpls:
+                logging.debug("\t\t %s" % str(tp))
             count += 1
         except Exception as el:
             #Slogging.debug(str(el))
@@ -297,15 +306,33 @@ def inherit_from_chain(nco):
     ''' Takes the template chain and cycles through
     it in reverse overriding properties. 
     '''
+    # lists to hold templates and users of templates
     tpls = []
+    tpls_strings = []
+    tplsAndUsers = []
     users = []
     for obj in nco.nagObjs:
         try:
-            if obj.name.value:
-                tpls.append(obj)
+            if obj.name.value and obj.use.value:
+                # go ahead and strip out spaces in the object's name field
+                obj.name.value = obj.name.value.rstrip(' ')
+                logging.debug("Found template AND user with name = '%s'" % obj.name.value)
+                tplsAndUsers.append(obj)
+                tpls_strings.append(obj.name.value)
         except:
             pass
+    for obj in nco.nagObjs:
         try:
+            # only templates have the .name property
+            if obj.name.value and obj.name.value not in tpls_strings:
+                obj.name.value = obj.name.value.rstrip(' ')
+                logging.debug("Found original template with name = %s" % obj.name.value)
+                tpls.append(obj)
+        except Exception as er:
+            #logging.debug("Exception filtering templates: " + str(er))
+            pass
+        try:
+            # only things using templates have the .use property
             if obj.use.value:
                 users.append(obj)
         except:
@@ -313,28 +340,40 @@ def inherit_from_chain(nco):
     logging.debug("Len(tpls): %s" % str(len(tpls)))
     logging.debug("Len(users): %s" % str(len(users)))
     count_copies = 0
-    for user in nco.nagObjs:
+    # first loop through and populate templates that are also users
+    for user in tplsAndUsers:
+        # if they have a template chain...
+        logging.debug("Working on template and user with name: " + user.name.value)
         if len(user.templateChain.value) >= 1:
+            logging.debug("\tlen(user.templateChain.value): " + str(len(user.templateChain.value)))
             while True:
                 try:
                     working = user.templateChain.value.pop()
-                except:
+                    logging.debug("\tSearching for pure template with name: '%s' ..." % working.get('tpname'))
+                except Exception as dog:
+                    #logging.debug("\tException popping from templateChain: " + str(dog))
                     break
-                #logging.debug("Working: " + str(working))
+                # cycle through the template list
+                found = False
                 for tpl in tpls:
-                    #logging.debug(tpl.name)
+                    # find the matching template
                     if working.get('tpname') == tpl.name.value:
-                        #logging.debug("Found template object for %s" % str(user))
+                        found = True
+                        # find all set properties from the template, make that list attr_to_copy
                         attrs_to_copy = tpl.display_filter(transfer=True)
                         count_copies += 1
-                        for attr in attrs_to_copy:
-                            prop = attr
-                            val = getattr(tpl,prop).value
-                            msg = "%s::%s (%s) came from %s" % (working.get('idx'),prop,val,tpl.name)
-                            user.inheritanceLog.value.append(msg)
-                            tempSuperProp = ncClasses.NagObjSuperProp(val)
-                            setattr(user,prop,tempSuperProp)
-            logging.debug(str(user.inheritanceLog.value))
+                        logging.debug("\t\tCopying properties from: " + working.get('tpname'))
+                        for prop in attrs_to_copy:
+                            val = getattr(getattr(tpl,prop),'value')
+                            if val is not '':
+                                msg = "\t\t\t%s::%s (%s) came from %s" % (working.get('idx'),prop,val,tpl.name.value)
+                                user.inheritanceLog.value.append(msg)
+                                tempSuperProp = ncClasses.NagObjSuperProp(val)
+                                setattr(user,prop,tempSuperProp)
+                logging.debug('\t\t\t\tFound: ' + str(found))
+            for logentry in user.inheritanceLog.value:
+                logging.debug("\t\t\t\t" + logentry)
+    #
 
     logging.debug("inherit_from_chain(): Number of object property copies: %s" % str(count_copies))
     return(nco)

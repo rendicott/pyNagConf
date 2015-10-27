@@ -51,11 +51,13 @@ class NagConfig(object):
         for obj in self.nagObjs:
             for attr in dir(obj):
                 if '__' not in attr and 'instancemethod' not in str(type(getattr(obj,attr))):
-                    val = getattr(obj,attr.value)
+                    val = getattr(getattr(obj,attr),'value')
                     try:
                         if 'str' in str(type(val)):
                             newval = val.rstrip()
-                            setattr(obj,attr.value,newval)
+                            newval = newval.rstrip(' ')
+                            newval = newval.rstrip('\t')
+                            setattr(getattr(obj,attr),'value',newval)
                     except:
                         pass
 
