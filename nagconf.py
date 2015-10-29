@@ -234,7 +234,7 @@ def discover_template_chain(nco):
                 i_tpls.append({'idx':seq,'tpname':tp})
             for thing2 in templates:
                 try:
-                    if thing2.name in tpls:
+                    if thing2.name.value in tpls:
                         tpls2 = thing2.use.value.split(',')
                         for a in tpls2:
                             tpls.append(a)
@@ -242,7 +242,7 @@ def discover_template_chain(nco):
                             i_tpls.append({'idx':seq,'tpname':a})
                         for thing3 in templates:
                             try:
-                                if thing3.name in tpls2:
+                                if thing3.name.value in tpls2:
                                     tpls3 = thing3.use.value.split(',')
                                     for b in tpls3:
                                         tpls.append(b)
@@ -250,7 +250,7 @@ def discover_template_chain(nco):
                                         i_tpls.append({'idx':seq,'tpname':b})
                                     for thing4 in templates:
                                         try:
-                                            if thing4.name in tpls3:
+                                            if thing4.name.value in tpls3:
                                                 tpls4 = thing4.use.value.split(',')
                                                 for c in tpls4:
                                                     tpls.append(c)
@@ -258,7 +258,7 @@ def discover_template_chain(nco):
                                                     i_tpls.append({'idx':seq,'tpname':c})
                                                 for thing5 in templates:
                                                     try:
-                                                        if thing5.name in tpls4:
+                                                        if thing5.name.value in tpls4:
                                                             tpls5 = thing5.use.value.split(',')
                                                             for d in tpls5:
                                                                 tpls.append(d)
@@ -266,7 +266,7 @@ def discover_template_chain(nco):
                                                                 i_tpls.append({'idx':seq,'tpname':d})
                                                             for thing6 in templates:
                                                                 try:
-                                                                    if thing6.name in tpls5:
+                                                                    if thing6.name.value in tpls5:
                                                                         tpls6 = thing6.use.value.split(',')
                                                                         for e in tpls5:
                                                                             tpls.append(e)
@@ -340,16 +340,19 @@ def inherit_from_chain(nco):
     logging.debug("Len(tpls): %s" % str(len(tpls)))
     logging.debug("Len(users): %s" % str(len(users)))
     count_copies = 0
-    # first loop through and populate templates that are also users
-    for user in tplsAndUsers:
+
+    # now combine all templates into one list
+    for t in tplsAndUsers:
+        tpls.append(t)
+    for user in tpls:
         # if they have a template chain...
-        logging.debug("Working on template and user with name: " + user.name.value)
+        logging.debug("Working on template with name: " + user.name.value)
         if len(user.templateChain.value) >= 1:
             logging.debug("\tlen(user.templateChain.value): " + str(len(user.templateChain.value)))
             while True:
                 try:
                     working = user.templateChain.value.pop()
-                    logging.debug("\tSearching for pure template with name: '%s' ..." % working.get('tpname'))
+                    logging.debug("\tSearching for template with name: '%s' ..." % working.get('tpname'))
                 except Exception as dog:
                     #logging.debug("\tException popping from templateChain: " + str(dog))
                     break
@@ -368,11 +371,90 @@ def inherit_from_chain(nco):
                             if val is not '':
                                 msg = "\t\t\t%s::%s (%s) came from %s" % (working.get('idx'),prop,val,tpl.name.value)
                                 user.inheritanceLog.value.append(msg)
-                                tempSuperProp = ncClasses.NagObjSuperProp(val)
-                                setattr(user,prop,tempSuperProp)
+                                try:
+                                    existingValue = getattr(getattr(user,prop),'value',val)
+                                    if existingValue == '':
+                                        raise(Exception)                                    
+                                    logging.debug("\t\t\t\tFound existing propery '%s', tracking chain but not changing..." % prop)
+                                    # pull in existing inheritanceHistory if any
+                                    tHist = getattr(getattr(user,prop),'inheritanceHistory')
+                                    tHist.append(tpl.name.value)
+                                    setattr(getattr(user,prop),'inheritanceHistory',tHist)
+                                except:
+                                    logging.debug("\t\t\t\tNo pre-existing property or value blank for '%s', creating new..." % prop)
+                                    tempObjSuperProp = ncClasses.NagObjSuperProp(val,explicitInheritance=True,donor=tpl.name.value)
+                                    setattr(user,prop,tempObjSuperProp)
                 logging.debug('\t\t\t\tFound: ' + str(found))
-            for logentry in user.inheritanceLog.value:
-                logging.debug("\t\t\t\t" + logentry)
+            general =  user.classification.value
+            logging.debug("History chain for '%s': " % general)
+            for propString in user.display_filter(transfer=True):
+                prop = getattr(user,propString)
+                try:
+                    logging.debug("\t\t\t\t\t%s.%s history = '%s'" % (general,propString,prop.return_history()))
+                except:
+                    pass
+    # now loop through all the rest of the objects
+    for user in users:
+        logging.debug("Working on user with uid: " + user.get_uid())
+        # if they have a template chain...
+        try:
+            user.name.value
+            logging.debug("User has name '%s', which means it's a template so skipping..." % user.name.value)
+            continue
+        except:
+            if len(user.templateChain.value) >= 1:
+                logging.debug("\tlen(user.templateChain.value): " + str(len(user.templateChain.value)))
+                while True:
+                    try:
+                        working = user.templateChain.value.pop()
+                        logging.debug("\tSearching for template with name: '%s' ..." % working.get('tpname'))
+                    except Exception as dog:
+                        #logging.debug("\tException popping from templateChain: " + str(dog))
+                        break
+                    # cycle through the template list
+                    found = False
+                    for tpl in tpls:
+                        # find the matching template
+                        if working.get('tpname') == tpl.name.value:
+                            found = True
+                            # find all set properties from the template, make that list attr_to_copy
+                            attrs_to_copy = tpl.display_filter(transfer=True)
+                            count_copies += 1
+                            logging.debug("\t\tCopying properties from: " + working.get('tpname'))
+                            for prop in attrs_to_copy:
+                                val = getattr(getattr(tpl,prop),'value')
+                                if val is not '':
+                                    msg = "\t\t\t%s::%s (%s) came from %s" % (working.get('idx'),prop,val,tpl.name.value)
+                                    user.inheritanceLog.value.append(msg)
+                                    try:
+                                        existingValue = getattr(getattr(user,prop),'value',val)
+                                        if existingValue == '':
+                                            raise(Exception)
+                                        logging.debug("\t\t\t\tFound existing propery '%s', tracking chain but not changing..." % prop)
+                                        # pull in existing inheritanceHistory if any
+                                        tHist = getattr(getattr(user,prop),'inheritanceHistory')
+                                        tHist.append(tpl.name.value)
+                                        setattr(getattr(user,prop),'inheritanceHistory',tHist)
+                                    except:
+                                        logging.debug("\t\t\t\tNo pre-existing property or value blank for '%s', creating new..." % prop)
+                                        tempObjSuperProp = ncClasses.NagObjSuperProp(val,explicitInheritance=True,donor=tpl.name.value)
+                                        setattr(user,prop,tempObjSuperProp)
+                    logging.debug('\t\t\t\tFound: ' + str(found))
+                general = user.classification.value
+                logging.debug("History chain for '%s': " % user.get_uid())
+                for propString in user.display_filter(transfer=True):
+                    prop = getattr(user,propString)
+                    try:
+                        histFormat = "{0:55}{1:55}{2:}"
+                        ider = "%s.%s" % (general,propString)
+                        hist = str(prop.return_history())
+                        msg = histFormat.format(ider,prop.value,hist)
+                        logging.debug("\t\t\t\t\t" + msg)
+                    except:
+                        pass
+
+            #for logentry in user.inheritanceLog.value:
+                #logging.debug("\t\t\t\t" + logentry)
     #
 
     logging.debug("inherit_from_chain(): Number of object property copies: %s" % str(count_copies))

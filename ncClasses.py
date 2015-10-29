@@ -68,10 +68,29 @@ class NagObjSuperProp():
     This way each property can have it's own methods and properties. Want to do
     this so each property can track it's own history. 
     '''
-    def __init__(self,value=None):
+    def __init__(self,value=None,explicitInheritance=None,donor=None):
         if value is None:
             value = ''
+        if explicitInheritance is None:
+            explicitInheritance = False
+        if donor is None:
+            donor = '*'
+        self.donor = donor
+        self.explicitInheritance = explicitInheritance 
         self.value = value # this is the primary value to be returned on most calls
+        self.inheritanceHistory = []
+        self.set_history()
+    def set_history(self):
+        if self.value != '' and not self.explicitInheritance:
+            self.inheritanceHistory.append('EXPLICIT_DIRECT')
+        elif self.value == '':
+            self.inheritanceHistory.append('__')
+        else:
+            self.inheritanceHistory.append(self.donor)
+    def return_history(self):
+        return((self.inheritanceHistory))
+    def __repr__(self):
+        return(str(self.value))
 
                    
 class NagObjFlex():
@@ -181,23 +200,23 @@ class NagObjFlex():
                 else:
                     #print("Could not match self.typestring with a classDictionary: " + str(self.typestring))
                     found = False
-            logging.debug("NagObjFlex().morph_to_classed(): workingobj is of type: '%s'" % workingobj.classification.value)
-            logging.debug("NagObjFlex().morph_to_classed(): self.dumpself() = '%s'" % str(self.dumpself()))
+            #logging.debug("NagObjFlex().morph_to_classed(): workingobj is of type: '%s'" % workingobj.classification.value)
+            #logging.debug("NagObjFlex().morph_to_classed(): self.dumpself() = '%s'" % str(self.dumpself()))
             if workingobj is not None:
-                logging.debug("NagObjFlex().morph_to_classed(): workingobj must not be 'None'....")
+                #logging.debug("NagObjFlex().morph_to_classed(): workingobj must not be 'None'....")
                 #print("\tworkingobj is not None, length of dumpself(): " + str(len(self.dumpself())))
 
                 for propval in self.dumpself():
                     prop = propval[0]
                     val = propval[1]
-                    logging.debug("NagObjFlex().morph_to_classed(): prop = %s , val = %s" % (prop,val))
+                    #logging.debug("NagObjFlex().morph_to_classed(): prop = %s , val = %s" % (prop,val))
                     setattr(workingobj,prop,val)
                     workingobj.classification.value = self.typestring.value
                     workingobj.classified.value = True
                     self.deleteflag.value = True
             return(workingobj)
         except Exception as ex:
-            logging.debug("NagObjFlex().morph_to_classed(): Exception: '%s'" % str(ex))
+            #logging.debug("NagObjFlex().morph_to_classed(): Exception: '%s'" % str(ex))
             return(str(ex))
     def copy_from_obj(self,obj):
         ''' takes select properties from obj
@@ -205,6 +224,27 @@ class NagObjFlex():
         key value pairs that were copied.
         '''
         pass
+    def get_uid(self):
+        ''' 
+        returns some unique string for type of definition
+        to make debugging easier. Templates have unique 'name'
+        properties but the uid for a service might be the 
+        command+host or something '''
+        returnvalue = 'uid' # generic filler
+        r = self.typestring.value
+        if r == 'host':
+            try:
+                returnvalue = "%s_%s" % (r,self.host_name.value)
+            except:
+                pass
+        elif r == 'service':
+            try:
+                returnvalue = "%s_%s___%s" % (r,self.host_name.value,self.service_description.value)
+            except:
+                returnvalue = "%s_%s___%s" % (r,self.host_name.value,self.display_name.value)
+        else:
+            returnvalue = r + "_genericuid_"
+        return(returnvalue)
 
 
 
@@ -287,8 +327,10 @@ class NagObjService(NagObjFlex):
         self.max_check_attempts             =   NagObjSuperProp()      ##
         self.check_interval                 =   NagObjSuperProp()      ##
         self.retry_interval                 =   NagObjSuperProp()      ##
+        self.normal_check_interval          =   NagObjSuperProp()      ##
         self.active_checks_enabled          =   NagObjSuperProp()      #[0/1]
         self.passive_checks_enabled         =   NagObjSuperProp()      #[0/1]
+        self.parallelize_check              =   NagObjSuperProp()      #[0/1]
         self.check_period                   =   NagObjSuperProp()      #timeperiod_name
         self.obsess_over_service            =   NagObjSuperProp()      #[0/1]
         self.check_freshness                =   NagObjSuperProp()      #[0/1]
@@ -315,6 +357,8 @@ class NagObjService(NagObjFlex):
         self.action_url                     =   NagObjSuperProp()      #url
         self.icon_image                     =   NagObjSuperProp()      #image_file
         self.icon_image_alt                 =   NagObjSuperProp()      #alt_string
+        self.failure_prediction_enabled     =   NagObjSuperProp()      ##
+        self.retry_check_interval           =   NagObjSuperProp()      ##
 
 class NagObjServiceGroup(NagObjFlex):
     ''' For making a clearly defined
