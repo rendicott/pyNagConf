@@ -200,7 +200,8 @@ def dedupe_sort_list_of_dict(lod,dedupeField=None,orderField=None):
         result.append(g.next())
     # now sort
     getvals = operator.itemgetter(orderField)
-    result.sort(key=getvals)
+    # since Nagios inheritance works left to right and we're 'popping' to inherit...
+    result.sort(key=getvals,reverse=True) 
     lod[:] = result
     msg = pprint.pformat(lod)
     #logging.debug(msg + '\n')
@@ -364,7 +365,7 @@ def inherit_from_chain(nco):
                         found = True
                         # find all set properties from the template, make that list attr_to_copy
                         attrs_to_copy = tpl.display_filter(transfer=True)
-                        count_copies += 1
+                        
                         logging.debug("\t\tCopying properties from: " + working.get('tpname'))
                         for prop in attrs_to_copy:
                             val = getattr(getattr(tpl,prop),'value')
@@ -384,6 +385,7 @@ def inherit_from_chain(nco):
                                     logging.debug("\t\t\t\tNo pre-existing property or value blank for '%s', creating new..." % prop)
                                     tempObjSuperProp = ncClasses.NagObjSuperProp(val,explicitInheritance=True,donor=tpl.name.value)
                                     setattr(user,prop,tempObjSuperProp)
+                                    count_copies += 1
                 logging.debug('\t\t\t\tFound: ' + str(found))
             general =  user.classification.value
             logging.debug("History chain for '%s': " % general)
@@ -419,7 +421,6 @@ def inherit_from_chain(nco):
                             found = True
                             # find all set properties from the template, make that list attr_to_copy
                             attrs_to_copy = tpl.display_filter(transfer=True)
-                            count_copies += 1
                             logging.debug("\t\tCopying properties from: " + working.get('tpname'))
                             for prop in attrs_to_copy:
                                 val = getattr(getattr(tpl,prop),'value')
@@ -439,13 +440,14 @@ def inherit_from_chain(nco):
                                         logging.debug("\t\t\t\tNo pre-existing property or value blank for '%s', creating new..." % prop)
                                         tempObjSuperProp = ncClasses.NagObjSuperProp(val,explicitInheritance=True,donor=tpl.name.value)
                                         setattr(user,prop,tempObjSuperProp)
+                                        count_copies += 1
                     logging.debug('\t\t\t\tFound: ' + str(found))
                 general = user.classification.value
                 logging.debug("History chain for '%s': " % user.get_uid())
                 for propString in user.display_filter(transfer=True):
                     prop = getattr(user,propString)
                     try:
-                        histFormat = "{0:55}{1:55}{2:}"
+                        histFormat = "{0:55}{1:100}{2:}"
                         ider = "%s.%s" % (general,propString)
                         hist = str(prop.return_history())
                         msg = histFormat.format(ider,prop.value,hist)
