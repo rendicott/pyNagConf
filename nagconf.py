@@ -154,22 +154,22 @@ def morph(nco):
         try:
             #logging.debug("morph(): pre-morph thing classification: '%s'" % thing.classification.value)
             newthing = thing.morph_to_classed()
-            logging.debug("morph(): post-morph newthing classification: '%s'" % newthing.classification.value)
+            #logging.debug("morph(): post-morph newthing classification: '%s'" % newthing.classification.value)
             if newthing is not None:
                 classed.append(newthing)
         except Exception as ar:
             #print "--"
             logging.debug(str(ar))
-    logging.debug("morph(): Finished running things.morph_to_classed(), attempting nco.dump_s(tats()...")
-    logging.debug(nco.dump_stats())
-    logging.debug("morph(): Finished nco.dump_stats(), now running nco.purge()....")
+    #logging.debug("morph(): Finished running things.morph_to_classed(), attempting nco.dump_s(tats()...")
+    #logging.debug(nco.dump_stats())
+    #logging.debug("morph(): Finished nco.dump_stats(), now running nco.purge()....")
     nco.purge()
-    logging.debug("morph(): Finished nco.purge(), trying nco.dump_stats()...")
-    logging.debug(nco.dump_stats())
+    #logging.debug("morph(): Finished nco.purge(), trying nco.dump_stats()...")
+    #logging.debug(nco.dump_stats())
     for thing in classed:
         nco.nagObjs.append(thing)
 
-    logging.debug("Now leaving morph()...")
+    #logging.debug("Now leaving morph()...")
     return nco
 
 def dedupe_sort_list_of_dict(lod,dedupeField=None,orderField=None):
@@ -292,9 +292,9 @@ def discover_template_chain(nco):
                 except:
                     pass
             thing.templateChain.value = i_tpls
-            logging.debug("Discovered template chain: " )
-            for tp in i_tpls:
-                logging.debug("\t\t %s" % str(tp))
+            #logging.debug("Discovered template chain: " )
+            #for tp in i_tpls:
+                #logging.debug("\t\t %s" % str(tp))
             count += 1
         except Exception as el:
             #Slogging.debug(str(el))
@@ -317,7 +317,7 @@ def inherit_from_chain(nco):
             if obj.name.value and obj.use.value:
                 # go ahead and strip out spaces in the object's name field
                 obj.name.value = obj.name.value.rstrip(' ')
-                logging.debug("Found template AND user with name = '%s'" % obj.name.value)
+                #logging.debug("Found template AND user with name = '%s'" % obj.name.value)
                 tplsAndUsers.append(obj)
                 tpls_strings.append(obj.name.value)
         except:
@@ -327,7 +327,7 @@ def inherit_from_chain(nco):
             # only templates have the .name property
             if obj.name.value and obj.name.value not in tpls_strings:
                 obj.name.value = obj.name.value.rstrip(' ')
-                logging.debug("Found original template with name = %s" % obj.name.value)
+                #logging.debug("Found original template with name = %s" % obj.name.value)
                 tpls.append(obj)
         except Exception as er:
             #logging.debug("Exception filtering templates: " + str(er))
@@ -349,11 +349,11 @@ def inherit_from_chain(nco):
         # if they have a template chain...
         logging.debug("Working on template with name: " + user.name.value)
         if len(user.templateChain.value) >= 1:
-            logging.debug("\tlen(user.templateChain.value): " + str(len(user.templateChain.value)))
+            #logging.debug("\tlen(user.templateChain.value): " + str(len(user.templateChain.value)))
             while True:
                 try:
                     working = user.templateChain.value.pop()
-                    logging.debug("\tSearching for template with name: '%s' ..." % working.get('tpname'))
+                    #logging.debug("\tSearching for template with name: '%s' ..." % working.get('tpname'))
                 except Exception as dog:
                     #logging.debug("\tException popping from templateChain: " + str(dog))
                     break
@@ -366,7 +366,7 @@ def inherit_from_chain(nco):
                         # find all set properties from the template, make that list attr_to_copy
                         attrs_to_copy = tpl.display_filter(transfer=True)
                         
-                        logging.debug("\t\tCopying properties from: " + working.get('tpname'))
+                        #logging.debug("\t\tCopying properties from: " + working.get('tpname'))
                         for prop in attrs_to_copy:
                             val = getattr(getattr(tpl,prop),'value')
                             if val is not '':
@@ -375,41 +375,59 @@ def inherit_from_chain(nco):
                                 try:
                                     existingValue = getattr(getattr(user,prop),'value',val)
                                     if existingValue == '':
-                                        raise(Exception)                                    
-                                    logging.debug("\t\t\t\tFound existing propery '%s', tracking chain but not changing..." % prop)
-                                    # pull in existing inheritanceHistory if any
-                                    tHist = getattr(getattr(user,prop),'inheritanceHistory')
-                                    tHist.append(tpl.name.value)
-                                    setattr(getattr(user,prop),'inheritanceHistory',tHist)
+                                        raise(Exception)
+                                    elif '+' in existingValue:
+                                        print("found a +")
+                                        # must honor nagios additive property
+                                        # strip out the '+' from the string
+                                        existingValue = existingValue.strip('+')
+                                        newValue = existingValue + ',' + val
+                                        print("newValue: '%s' for '%s'" % (newValue,user.name.value))
+                                        # set the new value
+                                        setattr(getattr(user,prop),'value',newValue)
+                                        # record the history chain
+                                        tHist = getattr(getattr(user,prop),'inheritanceHistory')
+                                        tHist.append(tpl.name.value)
+                                        setattr(getattr(user,prop),'inheritanceHistory',tHist)
+                                    else:                                    
+                                        #logging.debug("\t\t\t\tFound existing propery '%s', tracking chain but not changing..." % prop)
+                                        # pull in existing inheritanceHistory if any
+                                        tHist = getattr(getattr(user,prop),'inheritanceHistory')
+                                        tHist.append(tpl.name.value)
+                                        setattr(getattr(user,prop),'inheritanceHistory',tHist)
                                 except:
-                                    logging.debug("\t\t\t\tNo pre-existing property or value blank for '%s', creating new..." % prop)
+                                    #logging.debug("\t\t\t\tNo pre-existing property or value blank for '%s', creating new..." % prop)
                                     tempObjSuperProp = ncClasses.NagObjSuperProp(val,explicitInheritance=True,donor=tpl.name.value)
                                     setattr(user,prop,tempObjSuperProp)
                                     count_copies += 1
-                logging.debug('\t\t\t\tFound: ' + str(found))
+                #logging.debug('\t\t\t\tFound: ' + str(found))
             general =  user.classification.value
-            logging.debug("History chain for '%s': " % general)
+            logging.debug("History chain for '%s' with name '%s': " % (general,user.name.value))
             for propString in user.display_filter(transfer=True):
                 prop = getattr(user,propString)
                 try:
-                    logging.debug("\t\t\t\t\t%s.%s history = '%s'" % (general,propString,prop.return_history()))
+                    histFormat = "{0:55}{1:100}{2:}"
+                    ider = "'%s.%s'" % (general,propString)
+                    hist = "'" + str(prop.return_history()) + "'"
+                    msg = histFormat.format(ider,"'" + prop.value + "'",hist)
+                    logging.debug('\t\t' + msg)
                 except:
                     pass
     # now loop through all the rest of the objects
     for user in users:
-        logging.debug("Working on user with uid: " + user.get_uid())
+        #logging.debug("Working on user with uid: " + user.get_uid())
         # if they have a template chain...
         try:
             user.name.value
-            logging.debug("User has name '%s', which means it's a template so skipping..." % user.name.value)
+            #logging.debug("User has name '%s', which means it's a template so skipping..." % user.name.value)
             continue
         except:
             if len(user.templateChain.value) >= 1:
-                logging.debug("\tlen(user.templateChain.value): " + str(len(user.templateChain.value)))
+                #logging.debug("\tlen(user.templateChain.value): " + str(len(user.templateChain.value)))
                 while True:
                     try:
                         working = user.templateChain.value.pop()
-                        logging.debug("\tSearching for template with name: '%s' ..." % working.get('tpname'))
+                        #logging.debug("\tSearching for template with name: '%s' ..." % working.get('tpname'))
                     except Exception as dog:
                         #logging.debug("\tException popping from templateChain: " + str(dog))
                         break
@@ -421,7 +439,7 @@ def inherit_from_chain(nco):
                             found = True
                             # find all set properties from the template, make that list attr_to_copy
                             attrs_to_copy = tpl.display_filter(transfer=True)
-                            logging.debug("\t\tCopying properties from: " + working.get('tpname'))
+                            #logging.debug("\t\tCopying properties from: " + working.get('tpname'))
                             for prop in attrs_to_copy:
                                 val = getattr(getattr(tpl,prop),'value')
                                 if val is not '':
@@ -431,27 +449,40 @@ def inherit_from_chain(nco):
                                         existingValue = getattr(getattr(user,prop),'value',val)
                                         if existingValue == '':
                                             raise(Exception)
-                                        logging.debug("\t\t\t\tFound existing propery '%s', tracking chain but not changing..." % prop)
-                                        # pull in existing inheritanceHistory if any
-                                        tHist = getattr(getattr(user,prop),'inheritanceHistory')
-                                        tHist.append(tpl.name.value)
-                                        setattr(getattr(user,prop),'inheritanceHistory',tHist)
+                                        elif '+' in existingValue:
+                                            print("found a +")
+                                            # must honor nagios additive property
+                                            # strip out the '+' from the string
+                                            existingValue = existingValue.strip('+')
+                                            newValue = existingValue + ',' + val
+                                            # set the new value
+                                            setattr(getattr(user,prop),'value',newValue)
+                                            # record the history chain
+                                            tHist = getattr(getattr(user,prop),'inheritanceHistory')
+                                            tHist.append(tpl.name.value)
+                                            setattr(getattr(user,prop),'inheritanceHistory',tHist)
+                                        else:                                    
+                                            #logging.debug("\t\t\t\tFound existing propery '%s', tracking chain but not changing..." % prop)
+                                            # pull in existing inheritanceHistory if any
+                                            tHist = getattr(getattr(user,prop),'inheritanceHistory')
+                                            tHist.append(tpl.name.value)
+                                            setattr(getattr(user,prop),'inheritanceHistory',tHist)
                                     except:
-                                        logging.debug("\t\t\t\tNo pre-existing property or value blank for '%s', creating new..." % prop)
+                                        #logging.debug("\t\t\t\tNo pre-existing property or value blank for '%s', creating new..." % prop)
                                         tempObjSuperProp = ncClasses.NagObjSuperProp(val,explicitInheritance=True,donor=tpl.name.value)
                                         setattr(user,prop,tempObjSuperProp)
                                         count_copies += 1
-                    logging.debug('\t\t\t\tFound: ' + str(found))
+                    #logging.debug('\t\t\t\tFound: ' + str(found))
                 general = user.classification.value
                 logging.debug("History chain for '%s': " % user.get_uid())
                 for propString in user.display_filter(transfer=True):
-                    prop = getattr(user,propString)
+                    prop = getattr(user,propString) 
                     try:
                         histFormat = "{0:55}{1:100}{2:}"
-                        ider = "%s.%s" % (general,propString)
-                        hist = str(prop.return_history())
-                        msg = histFormat.format(ider,prop.value,hist)
-                        logging.debug("\t\t\t\t\t" + msg)
+                        ider = "'%s.%s'" % (general,propString)
+                        hist = "'" + str(prop.return_history()) + "'"
+                        msg = histFormat.format(ider,"'" + prop.value + "'",hist)
+                        logging.debug('\t\t' + msg)
                     except:
                         pass
 

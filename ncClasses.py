@@ -13,7 +13,8 @@ class NagConfig(object):
                 for thing in self.nagObjs:
                     cf.write(thing.gen_nag_text())
         except Exception as e:
-            logging.debug("Exception in NagConfig().gen_cfg_file(): " + str(e))
+            #logging.debug("Exception in NagConfig().gen_cfg_file(): " + str(e))
+            pass
 
     def dump_stats(self):
         msg = ''
@@ -186,8 +187,8 @@ class NagObjFlex():
         to create a new object of type newclass
         '''
         workingobj = None
-        logging.debug("I'm inside NagObjFlex().morph_to_classed(): ")
-        logging.debug("NagObjFlex().morph_to_classed(): self.typestring.value = '%s'" % self.typestring.value)
+        #logging.debug("I'm inside NagObjFlex().morph_to_classed(): ")
+        #logging.debug("NagObjFlex().morph_to_classed(): self.typestring.value = '%s'" % self.typestring.value)
         try:
             found = False
             for c in classDictionary:
