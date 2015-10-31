@@ -166,22 +166,39 @@ class NagObjFlex():
                     templist.append(attr)
             returnlist[:] = templist
         return(returnlist)
-    def gen_nag_text(self):
+    def gen_nag_text(self,expand=None):
         ''' Generates nagios cfg file text
         from this object's properties.
         '''
+        if expand is None:
+            expand = True
         line_definition = "define {0} {{\n"
         fmt_propval = '    {0:<30}{1:<}\n'
         fmt_propval_tpl = '    {0:<30}{1:<90}{2:<}\n'
         line_end = "}\n"
         msg = ''
         msg += line_definition.format(self.typestring.value)
-        for attr in self.display_filter():
-            prop = attr
-            val = getattr(self,prop).value
-            msg += fmt_propval.format(prop,val)
-        msg += line_end
+        if expand:
+            for attr in self.display_filter():
+                prop = attr
+                val = getattr(self,prop).value
+                #logging.debug("prop = '%s', val = '%s'" % (prop,val))
+                if val == '':
+                    pass
+                else:
+                    msg += fmt_propval.format(prop,val)
+            msg += line_end
+        else:
+            for attr in self.display_filter():
+                prop = attr
+                val = getattr(self,prop).value
+                firstHist = getattr(self,prop).inheritanceHistory[0]
+                if 'EXPLICIT_DIRECT' in firstHist and val != '':
+                    #logging.debug("prop = '%s', val = '%s'" % (prop,val))
+                    msg += fmt_propval.format(prop,val)
+            msg += line_end
         return(msg)
+
     def morph_to_classed(self):
         ''' Takes this object and attempts 
         to create a new object of type newclass

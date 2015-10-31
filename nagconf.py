@@ -11,6 +11,7 @@ import os
 import itertools
 import operator
 import pprint
+import re
 
 from operator import itemgetter
 from optparse import OptionParser, OptionGroup
@@ -21,6 +22,16 @@ defaultlogfilename = scriptfilename + '.log'
 
 import ncClasses
 from ncClasses import NagObjFlex
+
+welcomeMsg = (
+"""
+
+============================================
+Welcome to the nagConf interactive CLI menu.
+============================================
+
+"""
+)
 
 def setuplogging(loglevel,printtostdout,logfile):
     #pretty self explanatory. Takes options and sets up logging.
@@ -377,12 +388,12 @@ def inherit_from_chain(nco):
                                     if existingValue == '':
                                         raise(Exception)
                                     elif '+' in existingValue:
-                                        print("found a +")
+                                        
                                         # must honor nagios additive property
                                         # strip out the '+' from the string
                                         existingValue = existingValue.strip('+')
                                         newValue = existingValue + ',' + val
-                                        print("newValue: '%s' for '%s'" % (newValue,user.name.value))
+                                        
                                         # set the new value
                                         setattr(getattr(user,prop),'value',newValue)
                                         # record the history chain
@@ -402,7 +413,7 @@ def inherit_from_chain(nco):
                                     count_copies += 1
                 #logging.debug('\t\t\t\tFound: ' + str(found))
             general =  user.classification.value
-            logging.debug("History chain for '%s' with name '%s': " % (general,user.name.value))
+            #logging.debug("History chain for '%s' with name '%s': " % (general,user.name.value))
             for propString in user.display_filter(transfer=True):
                 prop = getattr(user,propString)
                 try:
@@ -410,7 +421,7 @@ def inherit_from_chain(nco):
                     ider = "'%s.%s'" % (general,propString)
                     hist = "'" + str(prop.return_history()) + "'"
                     msg = histFormat.format(ider,"'" + prop.value + "'",hist)
-                    logging.debug('\t\t' + msg)
+                    #logging.debug('\t\t' + msg)
                 except:
                     pass
     # now loop through all the rest of the objects
@@ -474,7 +485,7 @@ def inherit_from_chain(nco):
                                         count_copies += 1
                     #logging.debug('\t\t\t\tFound: ' + str(found))
                 general = user.classification.value
-                logging.debug("History chain for '%s': " % user.get_uid())
+                #logging.debug("History chain for '%s': " % user.get_uid())
                 for propString in user.display_filter(transfer=True):
                     prop = getattr(user,propString) 
                     try:
@@ -482,7 +493,7 @@ def inherit_from_chain(nco):
                         ider = "'%s.%s'" % (general,propString)
                         hist = "'" + str(prop.return_history()) + "'"
                         msg = histFormat.format(ider,"'" + prop.value + "'",hist)
-                        logging.debug('\t\t' + msg)
+                        #logging.debug('\t\t' + msg)
                     except:
                         pass
 
@@ -492,6 +503,74 @@ def inherit_from_chain(nco):
 
     logging.debug("inherit_from_chain(): Number of object property copies: %s" % str(count_copies))
     return(nco)
+
+def get_stats(nco):
+    '''
+    Gets statistics about the current working object database.
+    '''
+    myfunc = str(giveupthefunc())
+    returnMsg = 'stats: '
+    returnMsg += "\n\r"
+    returnMsg += nco.dump_stats()
+    return(returnMsg)
+
+def helpmenu():
+    ''' This function contains all of the menu context helptext and handles
+    the display of the 'h' command
+    '''
+    #define the main body of the help 
+    helptext = (
+    """
+===========================HELP MENU===========================================
+|                     LOREM IPSUM
+|
+| cmd x will list stuff for:
+===========================HELP MENU===========================================
+"""
+    )
+    #and finally, display the text
+    print(helptext)
+
+def menu(options,nco):
+    '''
+    Interactive menu for searching and modifying config.
+    '''
+    myfunc = str(giveupthefunc())
+    print(welcomeMsg)
+    while True:
+        userInput = raw_input("Enter Command ('h' for help): ")
+        logging.debug(myfunc + '\t' + 
+                    "Captured user input for menu: '%s' " % userInput)
+        '''here we define the regular expressions to parse the user input then 
+        forward data to functions. In python's regex, the '^' character 
+        indicates the beginning of a line, for real regex this could be 
+        accomplished with something like '([^\d\w\+]9\+)' '''
+        
+        # define regex for information 
+        cpiii = '(^i)'
+        cpii = re.compile(cpiii)
+        cpi = re.search(cpii,userInput)
+        
+        # define regex for help
+        cphhh = '(^h)'
+        cphh = re.compile(cphhh)
+        cph = re.search(cphh,userInput)
+
+        # define regex for exit
+        cpppp = '\+\+\+'
+        cppp = re.compile(cpppp)
+        cpp = re.search(cppp,userInput)
+
+        # handler for help
+        if cph:
+            helpmenu()
+        # handler for exit
+        elif cpp:
+            print "Good Bye!"
+            sys.exit()
+        # handler for information
+        elif cpi:
+            print(get_stats(nco))
 
 def main(options):
     ''' The main() method. Program starts here.
@@ -539,9 +618,12 @@ def main(options):
         logging.debug(str(ex))
         pass
 
+    # now have enough info to launch menu
+    menu(options,nco)
+    '''
     for thing in nco.nagObjs:
-        logging.debug(thing.gen_nag_text())
-
+        logging.debug(thing.gen_nag_text(expand=False))
+    '''
 
     #nco.gen_cfg_file('nagconf.cfg')
 
