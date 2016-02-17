@@ -524,12 +524,34 @@ def helpmenu():
 ===========================HELP MENU===========================================
 |                     LOREM IPSUM
 |
-| cmd x will list stuff for:
+| cmd 'i' will list loaded nodes info
+| cmd 'h' will print this help
+| cmd 'f+<filename>.cfg' will generate nagios config file compact
+| cmd 'fe+<filename>.cfg' will generate nagios config file with expanded inheritance
+| cmd 'l+<keyword>' will display all objects in memory of that keyword (e.g., 'host')
+| cmd '+++' will exit
 ===========================HELP MENU===========================================
 """
     )
     #and finally, display the text
     print(helptext)
+
+def experiment(nco):
+    for nO in nco.nagObjs:
+        if nO.classification.value == 'host':
+            row = nO.dict_format()
+            #print(header_cs)
+            print(str(row))
+
+def display_basic(nco,classy):
+    count = 0
+    msg = ""
+    for obj in nco.nagObjs:
+        if obj.classification.value == classy:
+            msg += obj.gen_nag_text(expand=False)
+            count+=1
+    msg +=("-=-=-=-=-=-=-=-=-=-=-  NUMBER OF RESULTS:       %s     -=-=-=-=-=-=-=-=-=-=- " % str(count))
+    return(msg)
 
 def menu(options,nco):
     '''
@@ -550,11 +572,28 @@ def menu(options,nco):
         cpiii = '(^i)'
         cpii = re.compile(cpiii)
         cpi = re.search(cpii,userInput)
+
+        # define regex for experiment
+        cpeee = '(^e)'
+        cpee = re.compile(cpeee)
+        cpe = re.search(cpee,userInput)
         
         # define regex for help
         cphhh = '(^h)'
         cphh = re.compile(cphhh)
         cph = re.search(cphh,userInput)
+
+        cplhhh = '(^l)(\+)(?P<classy>.*)'
+        cplhh = re.compile(cplhhh)
+        cplh = re.search(cplhh,userInput)
+
+        cpfff = '(^f)(\+)(?P<filename>.*.cfg)'
+        cpff = re.compile(cpfff)
+        cpf = re.search(cpff,userInput)
+
+        cpfffe = '(^fe)(\+)(?P<filename>.*.cfg)'
+        cpffe = re.compile(cpfffe)
+        cpfe = re.search(cpffe,userInput)
 
         # define regex for exit
         cpppp = '\+\+\+'
@@ -571,6 +610,20 @@ def menu(options,nco):
         # handler for information
         elif cpi:
             print(get_stats(nco))
+        elif cpf:
+            filename = cpf.group('filename')
+            logging.debug("Filename parsed is: '%s'" % filename)
+            nco.gen_cfg_file(filename,expand=False)
+        elif cpfe:
+            filename = cpfe.group('filename')
+            logging.debug("Filename parsed is: '%s'" % filename)
+            nco.gen_cfg_file(filename,expand=True)
+        elif cplh:
+            keyword = cplh.group('classy')
+            logging.debug("Parsed keyword for classification search: '%s'" % keyword)
+            print(display_basic(nco,keyword))
+        elif cpe:
+            experiment(nco)
 
 def main(options):
     ''' The main() method. Program starts here.

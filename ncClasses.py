@@ -7,11 +7,13 @@ class NagConfig(object):
     '''
     def __init__(self):
         self.nagObjs = [] # stores NagObj objects
-    def gen_cfg_file(self,filename):
+    def gen_cfg_file(self,filename,expand=None):
+        if expand is None:
+            expand = False
         try:
             with open (filename,'w') as cf:
                 for thing in self.nagObjs:
-                    cf.write(thing.gen_nag_text())
+                    cf.write(thing.gen_nag_text(expand))
         except Exception as e:
             #logging.debug("Exception in NagConfig().gen_cfg_file(): " + str(e))
             pass
@@ -125,10 +127,10 @@ class NagObjFlex():
         msgs = []
         for attr in self.display_filter():
             msgs.append([   attr,
-                            getattr(self,attr),
+                            getattr(getattr(self,attr),'value'),
                         ])
         return(msgs)
-    def display_filter(self,transfer=None):
+    def display_filter(self,transfer=None,display=None):
         ''' returns list of valid objects for
         display, e.g., filters out non-nagios properties
         '''
@@ -140,31 +142,48 @@ class NagObjFlex():
         '''
         if transfer is None:
             transfer = False # default to false for display purposes
+        if display is None:
+            display = False
         returnlist = []
-        for attr in dir(self):
-            val = getattr(self,attr)
-            if ('__' not in attr and 
-                'instancemethod' not in str(type(val)) and
-                'classification' not in attr and
-                'classified' not in attr and
-                'deleteflag' not in attr and
-                val != '' and
-                'typestring' not in attr and
-                'templateChain' not in attr and
-                'inheritanceLog' not in attr
-                ):
-                returnlist.append(attr)
+        if display:
+            for attr in dir(self):
+                val = getattr(self,attr)
+                logging.debug("\t\tValue: '%s'" % val)
+                if ('__' not in attr and 
+                    'instancemethod' not in str(type(val)) and
+                    'classification' not in attr and
+                    'classified' not in attr and
+                    'deleteflag' not in attr and
+                    'templateChain' not in attr and
+                    'inheritanceLog' not in attr
+                    ):
+                    logging.debug("\t\tValue: '%s'" % val)
+                    returnlist.append(attr)
+        else:
+            for attr in dir(self):
+                val = getattr(self,attr)
+                if ('__' not in attr and 
+                    'instancemethod' not in str(type(val)) and
+                    'classification' not in attr and
+                    'classified' not in attr and
+                    'deleteflag' not in attr and
+                    val != '' and
+                    'typestring' not in attr and
+                    'templateChain' not in attr and
+                    'inheritanceLog' not in attr
+                    ):
+                    returnlist.append(attr)
 
-        #filter even further
-        if transfer:
-            templist = []
-            for attr in returnlist:
-                if (    attr != 'name' and
-                        attr != 'use' and
-                        attr != 'register'
-                        ):
-                    templist.append(attr)
-            returnlist[:] = templist
+            #filter even further
+            if transfer:
+                templist = []
+                for attr in returnlist:
+                    if (    attr != 'name' and
+                            attr != 'use' and
+                            attr != 'register'
+                            ):
+                        templist.append(attr)
+                returnlist[:] = templist
         return(returnlist)
     def gen_nag_text(self,expand=None):
         ''' Generates nagios cfg file text
@@ -263,9 +282,19 @@ class NagObjFlex():
         else:
             returnvalue = r + "_genericuid_"
         return(returnvalue)
-
-
-
+    def dict_format(self):
+        '''
+        returns keyed list of attribute:value
+        '''
+        results = []
+        for attr in self.display_filter(display=True):
+            results.append([   attr,
+                            getattr(getattr(self,attr),'value'),
+                        ])
+        keyed = []
+        for i,tup in enumerate(results):
+            keyed.append({tup[0]:tup[1]})
+        return(keyed)
 
 class NagObjHost(NagObjFlex):
     ''' For making a clearly defined
