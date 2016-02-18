@@ -461,7 +461,7 @@ def inherit_from_chain(nco):
                                         if existingValue == '':
                                             raise(Exception)
                                         elif '+' in existingValue:
-                                            print("found a +")
+                                            #print("found a +")
                                             # must honor nagios additive property
                                             # strip out the '+' from the string
                                             existingValue = existingValue.strip('+')
@@ -537,11 +537,31 @@ def helpmenu():
     print(helptext)
 
 def experiment(nco):
+    person = 'rendicott'
+    groups = []
     for nO in nco.nagObjs:
-        if nO.classification.value == 'host':
-            row = nO.dict_format()
-            #print(header_cs)
-            print(str(row))
+        if nO.classification.value == 'contactgroup':
+            if person in nO.members.value:
+                groups.append(nO)
+    # need to grab the group string to put in groups instead of object
+    for group in groups:
+        print group.contactgroup_name.value
+    for n in nco.nagObjs:
+        try:
+            #print n.contacts.value
+            if person in n.contacts.value:
+                print n.classification.value
+        except:
+            pass
+        try:
+            #print n.contact_groups.value
+            contact_groups = n.contact_groups.value.split(',')
+            for contact_group in contact_groups:
+                if contact_group in groups:
+                    print n.classification.value
+        except:
+            pass
+
 
 def display_basic(nco,classy):
     count = 0
