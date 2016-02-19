@@ -536,21 +536,24 @@ def helpmenu():
     #and finally, display the text
     print(helptext)
 
-def experiment(nco):
-    person = 'rendicott'
+def subscriptions(nco,contact_name):
+    msg = ""
+    person = contact_name
     groups = []
     for nO in nco.nagObjs:
         if nO.classification.value == 'contactgroup':
             if person in nO.members.value:
-                groups.append(nO)
-    # need to grab the group string to put in groups instead of object
+                groups.append(nO.contactgroup_name.value)
+                
+    msg += "'%s' is a member of the following groups:\n\r" % contact_name
     for group in groups:
-        print group.contactgroup_name.value
+        msg += '\t' + group
+    msg += "'%s' is set to recive notifications from the following objects:\n\r"
     for n in nco.nagObjs:
         try:
             #print n.contacts.value
             if person in n.contacts.value:
-                print n.classification.value
+                msg += '\t' + str(n) + '\n\r'
         except:
             pass
         try:
@@ -558,9 +561,10 @@ def experiment(nco):
             contact_groups = n.contact_groups.value.split(',')
             for contact_group in contact_groups:
                 if contact_group in groups:
-                    print n.classification.value
+                    msg += '\t' + str(n) + '\n\r'
         except:
             pass
+    return(msg)
 
 
 def display_basic(nco,classy):
@@ -598,6 +602,11 @@ def menu(options,nco):
         cpee = re.compile(cpeee)
         cpe = re.search(cpee,userInput)
         
+        # define regex for experiment
+        cpsss = '(^s)(\+)(?P<contact_name>.*)'
+        cpss = re.compile(cpsss)
+        cps = re.search(cpss,userInput)
+
         # define regex for help
         cphhh = '(^h)'
         cphh = re.compile(cphhh)
@@ -642,6 +651,10 @@ def menu(options,nco):
             keyword = cplh.group('classy')
             logging.debug("Parsed keyword for classification search: '%s'" % keyword)
             print(display_basic(nco,keyword))
+        elif cps:
+            contact_name = cps.group('contact_name')
+            logging.debug("Parsed keyword for contact_name search: '%s'" % contact_name)
+            print(subscriptions(nco,contact_name))
         elif cpe:
             experiment(nco)
 

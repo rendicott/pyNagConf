@@ -351,6 +351,8 @@ class NagObjHost(NagObjFlex):
         self.statusmap_image                =   NagObjSuperProp()      #image_file
         self.twod_coords                    =   NagObjSuperProp()      #x_coord,y_coord
         self.threed_coords                  =   NagObjSuperProp()      #x_coord,y_coord,z_coord
+    def __repr__(self):
+        return("host." + self.host_name.value)
 
 class NagObjService(NagObjFlex):
     ''' For making a clearly defined
@@ -406,6 +408,11 @@ class NagObjService(NagObjFlex):
         self.icon_image_alt                 =   NagObjSuperProp()      #alt_string
         self.failure_prediction_enabled     =   NagObjSuperProp()      ##
         self.retry_check_interval           =   NagObjSuperProp()      ##
+    def __repr__(self):
+        if self.hostgroup_name.value == '':
+            return("service.%s.'%s'" % (self.host_name.value,self.service_description.value) )
+        else:
+            return("service.%s.'%s'" % (self.hostgroup_name.value,self.service_description.value) )
 
 class NagObjServiceGroup(NagObjFlex):
     ''' For making a clearly defined
@@ -518,6 +525,11 @@ class NagObjServiceEscalation(NagObjFlex):
         self.notification_interval  =   NagObjSuperProp()      ##
         self.escalation_period      =   NagObjSuperProp()      #timeperiod_name
         self.escalation_options     =   NagObjSuperProp()      #[w,u,c,r]
+    def __repr__(self):
+        if self.hostgroup_name.value == '':
+            return("serviceescalation.%s.'%s'" % (self.host_name.value,self.service_description.value) )
+        else:
+            return("serviceescalation.%s.'%s'" % (self.hostgroup_name.value,self.service_description.value) )
 
 class NagObjHostGroup(NagObjFlex):
     ''' For making a clearly defined
@@ -579,6 +591,17 @@ class NagObjHostEscalation(NagObjFlex):
         self.notification_interval  =   NagObjSuperProp()      ##
         self.escalation_period      =   NagObjSuperProp()      #timeperiod_name
         self.escalation_options     =   NagObjSuperProp()      #[d,u,r]
+    def __repr__(self):
+        if self.hostgroup_name.value == '':
+            try:
+                return("hostscalation.%s.'%s'" % (self.host_name.value,self.contact_groups.value) )
+            except:
+                pass
+        else:
+            try:
+                return("hostescalation.%s.'%s'" % (self.hostgroup_name.value,self.contact_groups.value) )
+            except:
+                pass
 
 class NagObjContactGroup(NagObjFlex):
     ''' For making a clearly defined
