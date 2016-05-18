@@ -1,21 +1,23 @@
 import logging
 
+
 class NagConfig(object):
-    ''' Object to store Nagios configuration objects
+    """ Object to store Nagios configuration objects
     and has various methods like 'dump to text' and
     csv export, etc. 
-    '''
+    """
     def __init__(self):
-        self.nagObjs = [] # stores NagObj objects
-    def gen_cfg_file(self,filename,expand=None):
+        self.nagObjs = []  # stores NagObj objects
+
+    def gen_cfg_file(self, filename, expand=None):
         if expand is None:
             expand = False
         try:
-            with open (filename,'w') as cf:
+            with open(filename, 'w') as cf:
                 for thing in self.nagObjs:
                     cf.write(thing.gen_nag_text(expand))
         except Exception as e:
-            #logging.debug("Exception in NagConfig().gen_cfg_file(): " + str(e))
+            # logging.debug("Exception in NagConfig().gen_cfg_file(): " + str(e))
             pass
 
     def dump_stats(self):
@@ -35,22 +37,23 @@ class NagConfig(object):
             if obj.classification.value not in classes:
                 classes.append(obj.classification.value)
         for c in classes:
-            msg += ("Count of %s = %s\n" % (c,allclassifications.count(c)))
+            msg += ("Count of %s = %s\n" % (c, allclassifications.count(c)))
         msg += ("Classified objects: %s\n" % str(count_classified))
         msg += ("Unclassified objects: %s\n" % str(count_unclassified))
-        return(msg)
+        return msg
+
     def purge(self):
-        ''' Runs through the self.nagObjs list
+        """ Runs through the self.nagObjs list
         and deletes objects with the 'deleteflag'
-        '''
+        """
 
         self.nagObjs = [x for x in self.nagObjs if not x.deleteflag.value]
 
     def scrub_data(self):
-        ''' Runs through the objects in self.nagObjs
+        """ Runs through the objects in self.nagObjs
         and removes unwanted characters from the property
         values.
-        '''
+        """
         for obj in self.nagObjs:
             for attr in dir(obj):
                 if '__' not in attr and 'instancemethod' not in str(type(getattr(obj,attr))):
@@ -66,11 +69,11 @@ class NagConfig(object):
 
 
 class NagObjSuperProp():
-    ''' This object will be used as a property for several of the other
+    """ This object will be used as a property for several of the other
     NagObj's. e.g., type(NagObjHostGroup.service_description) = NagObjSuperProp
     This way each property can have it's own methods and properties. Want to do
     this so each property can track it's own history. 
-    '''
+    """
     def __init__(self,value=None,explicitInheritance=None,donor=None):
         if value is None:
             value = ''
@@ -83,6 +86,7 @@ class NagObjSuperProp():
         self.value = value # this is the primary value to be returned on most calls
         self.inheritanceHistory = []
         self.set_history()
+
     def set_history(self):
         if self.value != '' and not self.explicitInheritance:
             self.inheritanceHistory.append('EXPLICIT_DIRECT')
@@ -90,18 +94,20 @@ class NagObjSuperProp():
             self.inheritanceHistory.append('__')
         else:
             self.inheritanceHistory.append(self.donor)
+
     def return_history(self):
         return((self.inheritanceHistory))
+
     def __repr__(self):
         return(str(self.value))
 
                    
 class NagObjFlex():
-    ''' Class to hold Nagios configuration objects
+    """ Class to hold Nagios configuration objects
     and their properties. This class cares little
     about what the object is and has very loose
     property definitions.
-    '''
+    """
     
     def __init__(self,typestring):
         ''' init only requires a typestring (e.g., define SERVICE)
@@ -112,6 +118,7 @@ class NagObjFlex():
         self.deleteflag = NagObjSuperProp(False) # after we morph ourself we can flag ourself for deletion
         self.templateChain = NagObjSuperProp([])
         self.inheritanceLog = NagObjSuperProp([])
+
     def dumpself(self):
         msgs = []
         for attr in dir(self):
@@ -120,20 +127,22 @@ class NagObjFlex():
                 ):
                 msgs.append([attr,getattr(self,attr)])
         return(msgs)
+
     def dumpself_min(self):
-        ''' Returns only the properties and values
+        """ Returns only the properties and values
         of the properties that have set values from default
-        '''
+        """
         msgs = []
         for attr in self.display_filter():
             msgs.append([   attr,
                             getattr(getattr(self,attr),'value'),
                         ])
         return(msgs)
+
     def display_filter(self,transfer=None,display=None):
-        ''' returns list of valid objects for
+        """ returns list of valid objects for
         display, e.g., filters out non-nagios properties
-        '''
+        """
 
         ''' If we're trying to copy properties from
         this object to another object we want to 
@@ -174,7 +183,7 @@ class NagObjFlex():
                     ):
                     returnlist.append(attr)
 
-            #filter even further
+            # filter even further
             if transfer:
                 templist = []
                 for attr in returnlist:
@@ -185,10 +194,11 @@ class NagObjFlex():
                         templist.append(attr)
                 returnlist[:] = templist
         return(returnlist)
+
     def gen_nag_text(self,expand=None):
-        ''' Generates nagios cfg file text
+        """ Generates nagios cfg file text
         from this object's properties.
-        '''
+        """
         if expand is None:
             expand = True
         line_definition = "define {0} {{\n"
@@ -219,87 +229,86 @@ class NagObjFlex():
         return(msg)
 
     def morph_to_classed(self):
-        ''' Takes this object and attempts 
+        """ Takes this object and attempts
         to create a new object of type newclass
-        '''
+        """
         workingobj = None
-        #logging.debug("I'm inside NagObjFlex().morph_to_classed(): ")
-        #logging.debug("NagObjFlex().morph_to_classed(): self.typestring.value = '%s'" % self.typestring.value)
+        # logging.debug("I'm inside NagObjFlex().morph_to_classed(): ")
+        # logging.debug("NagObjFlex().morph_to_classed(): self.typestring.value = '%s'" % self.typestring.value)
         try:
             found = False
             for c in classDictionary:
                 if c.get('typestring') == self.typestring.value:
-                    #print("\tMatched self.typestring '%s' with : %s" % (self.typestring,c.get('typestring')))
                     workingobj = c.get('classname')() # instantiates a new class object
-                    #print("\tCreated workingobj of type(): %s" % str(workingobj))
                     found = True
                     break
                 else:
-                    #print("Could not match self.typestring with a classDictionary: " + str(self.typestring))
                     found = False
-            #logging.debug("NagObjFlex().morph_to_classed(): workingobj is of type: '%s'" % workingobj.classification.value)
-            #logging.debug("NagObjFlex().morph_to_classed(): self.dumpself() = '%s'" % str(self.dumpself()))
             if workingobj is not None:
-                #logging.debug("NagObjFlex().morph_to_classed(): workingobj must not be 'None'....")
-                #print("\tworkingobj is not None, length of dumpself(): " + str(len(self.dumpself())))
+                # logging.debug("NagObjFlex().morph_to_classed(): workingobj must not be 'None'....")
+                # print("\tworkingobj is not None, length of dumpself(): " + str(len(self.dumpself())))
 
                 for propval in self.dumpself():
                     prop = propval[0]
                     val = propval[1]
-                    #logging.debug("NagObjFlex().morph_to_classed(): prop = %s , val = %s" % (prop,val))
+                    # logging.debug("NagObjFlex().morph_to_classed(): prop = %s , val = %s" % (prop,val))
                     setattr(workingobj,prop,val)
                     workingobj.classification.value = self.typestring.value
                     workingobj.classified.value = True
                     self.deleteflag.value = True
             return(workingobj)
         except Exception as ex:
-            #logging.debug("NagObjFlex().morph_to_classed(): Exception: '%s'" % str(ex))
+            # logging.debug("NagObjFlex().morph_to_classed(): Exception: '%s'" % str(ex))
             return(str(ex))
-    def copy_from_obj(self,obj):
-        ''' takes select properties from obj
+
+    def copy_from_obj(self, obj):
+        """ takes select properties from obj
         and copies to self. returns list of 
         key value pairs that were copied.
-        '''
+        """
         pass
+
     def get_uid(self):
-        ''' 
+        """
         returns some unique string for type of definition
         to make debugging easier. Templates have unique 'name'
         properties but the uid for a service might be the 
-        command+host or something '''
-        returnvalue = 'uid' # generic filler
+        command+host or something """
+        returnvalue = 'uid'  # generic filler
         r = self.typestring.value
         if r == 'host':
             try:
-                returnvalue = "%s_%s" % (r,self.host_name.value)
+                returnvalue = "%s_%s" % (r, self.host_name.value)
             except:
                 pass
         elif r == 'service':
             try:
-                returnvalue = "%s_%s___%s" % (r,self.host_name.value,self.service_description.value)
+                returnvalue = "%s_%s___%s" % (r, self.host_name.value, self.service_description.value)
             except:
-                returnvalue = "%s_%s___%s" % (r,self.host_name.value,self.display_name.value)
+                returnvalue = "%s_%s___%s" % (r, self.host_name.value, self.display_name.value)
         else:
             returnvalue = r + "_genericuid_"
         return(returnvalue)
+
     def dict_format(self):
-        '''
+        """
         returns keyed list of attribute:value
-        '''
+        """
         results = []
         for attr in self.display_filter(display=True):
             results.append([   attr,
                             getattr(getattr(self,attr),'value'),
                         ])
         keyed = []
-        for i,tup in enumerate(results):
-            keyed.append({tup[0]:tup[1]})
-        return(keyed)
+        for i, tup in enumerate(results):
+            keyed.append({tup[0]: tup[1]})
+        return keyed
+
 
 class NagObjHost(NagObjFlex):
-    ''' For making a clearly defined
+    """ For making a clearly defined
     Nagios host object with set properties.
-    '''
+    """
 
     def __init__(self):
         self.classification                 =   NagObjSuperProp('host')  # fixed classification string
@@ -351,17 +360,19 @@ class NagObjHost(NagObjFlex):
         self.statusmap_image                =   NagObjSuperProp()      #image_file
         self.twod_coords                    =   NagObjSuperProp()      #x_coord,y_coord
         self.threed_coords                  =   NagObjSuperProp()      #x_coord,y_coord,z_coord
+
     def __repr__(self):
         msg = ''
         msg += ("host.'%s'" % self.host_name.value)
         if msg == "host.''":
             msg = self.dumpself_min()
-        return(msg)
+        return msg
+
 
 class NagObjService(NagObjFlex):
-    ''' For making a clearly defined
+    """ For making a clearly defined
     Nagios service object with set properties.
-    '''
+    """
     def __init__(self):
         self.classification                 =   NagObjSuperProp('service')  # fixed classification string
         self.classified                     =   NagObjSuperProp(True)
@@ -412,6 +423,7 @@ class NagObjService(NagObjFlex):
         self.icon_image_alt                 =   NagObjSuperProp()      #alt_string
         self.failure_prediction_enabled     =   NagObjSuperProp()      ##
         self.retry_check_interval           =   NagObjSuperProp()      ##
+
     def __repr__(self):
         msg = ''
         if self.hostgroup_name.value == '':
@@ -422,12 +434,13 @@ class NagObjService(NagObjFlex):
             msg += ("service.%s.'%s'" % (self.hostgroup_name.value,self.service_description.value) )
         if msg == "service..''":
             msg = self.dumpself_min()
-        return(msg)
+        return msg
+
 
 class NagObjServiceGroup(NagObjFlex):
-    ''' For making a clearly defined
+    """ For making a clearly defined
     Nagios servicegroup object with set properties.
-    '''
+    """
     def __init__(self):
         self.classification                 =   NagObjSuperProp('servicegroup')  # fixed classification string
         self.classified                     =   NagObjSuperProp(True)
@@ -445,9 +458,9 @@ class NagObjServiceGroup(NagObjFlex):
 
 
 class NagObjContact(NagObjFlex):
-    ''' For making a clearly defined
+    """ For making a clearly defined
     Nagios contact object with set properties.
-    '''
+    """
     def __init__(self):
         self.classification                 =   NagObjSuperProp('contact')  # fixed classification string
         self.classified                     =   NagObjSuperProp(True)
@@ -475,9 +488,9 @@ class NagObjContact(NagObjFlex):
 
 
 class NagObjCommand(NagObjFlex):
-    ''' For making a clearly defined
+    """ For making a clearly defined
     Nagios command object with set properties.
-    '''
+    """
     def __init__(self):
         self.classification                 =   NagObjSuperProp('command')  # fixed classification string
         self.classified                     =   NagObjSuperProp(True)
@@ -489,9 +502,9 @@ class NagObjCommand(NagObjFlex):
         self.command_line        =   NagObjSuperProp()    #command_line
 
 class NagObjTimePeriod(NagObjFlex):
-    ''' For making a clearly defined
+    """ For making a clearly defined
     Nagios timeperiod object with set properties.
-    '''
+    """
     def __init__(self):
         self.classification                 =   NagObjSuperProp('timeperiod')  # fixed classification string
         self.classified                     =   NagObjSuperProp(True)
@@ -515,9 +528,9 @@ class NagObjTimePeriod(NagObjFlex):
         '''
 
 class NagObjServiceEscalation(NagObjFlex):
-    ''' For making a clearly defined
+    """ For making a clearly defined
     Nagios serviceescalation object with set properties.
-    '''
+    """
     def __init__(self):
         self.classification                 =   NagObjSuperProp('serviceescalation')  # fixed classification string
         self.classified                     =   NagObjSuperProp(True)
@@ -535,16 +548,17 @@ class NagObjServiceEscalation(NagObjFlex):
         self.notification_interval  =   NagObjSuperProp()      ##
         self.escalation_period      =   NagObjSuperProp()      #timeperiod_name
         self.escalation_options     =   NagObjSuperProp()      #[w,u,c,r]
+
     def __repr__(self):
         if self.hostgroup_name.value == '':
-            return("serviceescalation.%s.'%s'" % (self.host_name.value,self.service_description.value) )
+            return "serviceescalation.%s.'%s'" % (self.host_name.value, self.service_description.value)
         else:
-            return("serviceescalation.%s.'%s'" % (self.hostgroup_name.value,self.service_description.value) )
+            return "serviceescalation.%s.'%s'" % (self.hostgroup_name.value, self.service_description.value)
 
 class NagObjHostGroup(NagObjFlex):
-    ''' For making a clearly defined
+    """ For making a clearly defined
     Nagios hostgroup object with set properties.
-    '''
+    """
     def __init__(self):
         self.classification                 =   NagObjSuperProp('hostgroup')  # fixed classification string
         self.classified                     =   NagObjSuperProp(True)
@@ -561,9 +575,9 @@ class NagObjHostGroup(NagObjFlex):
         self.action_url           =   NagObjSuperProp()      #url
 
 class NagObjHostExtInfo(NagObjFlex):
-    ''' For making a clearly defined
+    """ For making a clearly defined
     Nagios hostextinfo object with set properties.
-    '''
+    """
     def __init__(self):
         self.classification                 =   NagObjSuperProp('hostextinfo')  # fixed classification string
         self.classified                     =   NagObjSuperProp(True)
@@ -582,9 +596,9 @@ class NagObjHostExtInfo(NagObjFlex):
         self.threed_coords      =   NagObjSuperProp()      #100.0,50.0,75.0
 
 class NagObjHostEscalation(NagObjFlex):
-    ''' For making a clearly defined
+    """ For making a clearly defined
     Nagios hostescalation object with set properties.
-    '''
+    """
     def __init__(self):
         self.classification                 =   NagObjSuperProp('hostescalation')  # fixed classification string
         self.classified                     =   NagObjSuperProp(True)
@@ -601,22 +615,24 @@ class NagObjHostEscalation(NagObjFlex):
         self.notification_interval  =   NagObjSuperProp()      ##
         self.escalation_period      =   NagObjSuperProp()      #timeperiod_name
         self.escalation_options     =   NagObjSuperProp()      #[d,u,r]
+
     def __repr__(self):
         if self.hostgroup_name.value == '':
             try:
-                return("hostscalation.%s.'%s'" % (self.host_name.value,self.contact_groups.value) )
+                return "hostscalation.%s.'%s'" % (self.host_name.value,self.contact_groups.value)
             except:
                 pass
         else:
             try:
-                return("hostescalation.%s.'%s'" % (self.hostgroup_name.value,self.contact_groups.value) )
+                return "hostescalation.%s.'%s'" % (self.hostgroup_name.value,self.contact_groups.value)
             except:
                 pass
 
+
 class NagObjContactGroup(NagObjFlex):
-    ''' For making a clearly defined
+    """ For making a clearly defined
     Nagios contactgroup object with set properties.
-    '''
+    """
     def __init__(self):
         self.classification                 =   NagObjSuperProp('contactgroup')  # fixed classification string
         self.classified                     =   NagObjSuperProp(True)

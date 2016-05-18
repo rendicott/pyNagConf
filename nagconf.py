@@ -601,7 +601,7 @@ def display_basic(nco, classy):
     return msg
 
 
-def menu(options,nco):
+def menu(options, nco):
     """
     Interactive menu for searching and modifying config.
     """
@@ -609,8 +609,7 @@ def menu(options,nco):
     print(welcomeMsg)
     while True:
         userInput = raw_input("Enter Command ('h' for help): ")
-        logging.debug(myfunc + '\t' + 
-                    "Captured user input for menu: '%s' " % userInput)
+        logging.debug(myfunc + '\t' + "Captured user input for menu: '%s' " % userInput)
         '''here we define the regular expressions to parse the user input then 
         forward data to functions. In python's regex, the '^' character 
         indicates the beginning of a line, for real regex this could be 
@@ -619,39 +618,39 @@ def menu(options,nco):
         # define regex for information 
         cpiii = '(^i)'
         cpii = re.compile(cpiii)
-        cpi = re.search(cpii,userInput)
+        cpi = re.search(cpii, userInput)
 
         # define regex for experiment
         cpeee = '(^e)'
         cpee = re.compile(cpeee)
-        cpe = re.search(cpee,userInput)
+        cpe = re.search(cpee, userInput)
         
         # define regex for experiment
         cpsss = '(^s)(\+)(?P<contact_name>.*)'
         cpss = re.compile(cpsss)
-        cps = re.search(cpss,userInput)
+        cps = re.search(cpss, userInput)
 
         # define regex for help
         cphhh = '(^h)'
         cphh = re.compile(cphhh)
-        cph = re.search(cphh,userInput)
+        cph = re.search(cphh, userInput)
 
         cplhhh = '(^l)(\+)(?P<classy>.*)'
         cplhh = re.compile(cplhhh)
-        cplh = re.search(cplhh,userInput)
+        cplh = re.search(cplhh, userInput)
 
         cpfff = '(^f)(\+)(?P<filename>.*.cfg)'
         cpff = re.compile(cpfff)
-        cpf = re.search(cpff,userInput)
+        cpf = re.search(cpff, userInput)
 
         cpfffe = '(^fe)(\+)(?P<filename>.*.cfg)'
         cpffe = re.compile(cpfffe)
-        cpfe = re.search(cpffe,userInput)
+        cpfe = re.search(cpffe, userInput)
 
         # define regex for exit
         cpppp = '\+\+\+'
         cppp = re.compile(cpppp)
-        cpp = re.search(cppp,userInput)
+        cpp = re.search(cppp, userInput)
 
         # handler for help
         if cph:
@@ -666,19 +665,19 @@ def menu(options,nco):
         elif cpf:
             filename = cpf.group('filename')
             logging.debug("Filename parsed is: '%s'" % filename)
-            nco.gen_cfg_file(filename,expand=False)
+            nco.gen_cfg_file(filename, expand=False)
         elif cpfe:
             filename = cpfe.group('filename')
             logging.debug("Filename parsed is: '%s'" % filename)
-            nco.gen_cfg_file(filename,expand=True)
+            nco.gen_cfg_file(filename, expand=True)
         elif cplh:
             keyword = cplh.group('classy')
             logging.debug("Parsed keyword for classification search: '%s'" % keyword)
-            print(display_basic(nco,keyword))
+            print(display_basic(nco, keyword))
         elif cps:
             contact_name = cps.group('contact_name')
             logging.debug("Parsed keyword for contact_name search: '%s'" % contact_name)
-            message = (subscriptions(nco,contact_name))
+            message = (subscriptions(nco, contact_name))
             print(message)
             out_file(message)
         elif cpe:
@@ -686,8 +685,8 @@ def menu(options,nco):
 
 
 def main(options):
-    ''' The main() method. Program starts here.
-    '''
+    """ The main() method. Program starts here.
+    """
     # test the logging
     thisfunc = str(giveupthefunc())
     cfgrawtext = get_config(options)
@@ -705,7 +704,7 @@ def main(options):
     try:
         nco.scrub_data()
     except Exception as ee:
-        #logging.debug(str(ee))
+        # logging.debug(str(ee))
         pass
     logging.debug("Finished nco.scrub_data(), attempting nco.dump_stats()...")
     logging.debug(nco.dump_stats())
@@ -713,16 +712,14 @@ def main(options):
     try:
         nco = morph(nco)
     except Exception as eee:
-        #logging.debug(str(eee))
+        # logging.debug(str(eee))
         pass
     logging.debug("Finished morph(), now trying nco.dump_stats()")
     logging.debug(nco.dump_stats())
-
-
     try:
         nco = discover_template_chain(nco)
     except Exception as eeee:
-        #logging.debug(str(eeee) )
+        # logging.debug(str(eeee) )
         pass
 
     try:
@@ -732,13 +729,12 @@ def main(options):
         pass
 
     # now have enough info to launch menu
-    menu(options,nco)
+    menu(options, nco)
     '''
     for thing in nco.nagObjs:
         logging.debug(thing.gen_nag_text(expand=False))
     '''
-
-    #nco.gen_cfg_file('nagconf.cfg')
+    # nco.gen_cfg_file('nagconf.cfg')
 
 
 if __name__ == '__main__':
@@ -747,45 +743,45 @@ if __name__ == '__main__':
     from optparse import OptionParser
     '''set up an additional option group just for debugging parameters'''
     from optparse import OptionGroup
-    usage = ("%prog [--debug] [--printtostdout] [--logfile] [--version] [--help] [--samplefileoption]")
-    #set up the parser object
+    usage = "%prog [--debug] [--printtostdout] [--logfile] [--version] [--help] [--samplefileoption]"
+    # set up the parser object
     parser = OptionParser(usage, version='%prog ' + sversion)
-    parser.add_option('-c','--cfgdir', 
-                    type='string',
-                    help=("This is the directory containing Nagios .cfg files."),default='.\samples')
-
-    parser_debug = OptionGroup(parser,'Debug Options')
-    parser_debug.add_option('-d','--debug',type='string',
+    parser.add_option('-c', '--cfgdir',
+                      type='string',
+                      help="This is the directory containing Nagios .cfg files.",
+                      default='.\samples')
+    parser_debug = OptionGroup(parser, 'Debug Options')
+    parser_debug.add_option('-d', '--debug', type='string',
         help=('Available levels are CRITICAL (3), ERROR (2), '
             'WARNING (1), INFO (0), DEBUG (-1)'),
         default='CRITICAL')
-    parser_debug.add_option('-p','--printtostdout',action='store_true',
-        default=False,help='Print all log messages to stdout')
-    parser_debug.add_option('-l','--logfile',type='string',metavar='FILE',
+    parser_debug.add_option('-p', '--printtostdout', action='store_true',
+        default=False, help='Print all log messages to stdout')
+    parser_debug.add_option('-l', '--logfile', type='string', metavar='FILE',
         help=('Desired filename of log file output. Default '
-            'is "'+ defaultlogfilename +'"')
+              'is "' + defaultlogfilename + '"')
         ,default=defaultlogfilename)
-    #officially adds the debuggin option group
+    # officially adds the debuggin option group
     parser.add_option_group(parser_debug) 
-    options,args = parser.parse_args() #here's where the options get parsed
+    options,args = parser.parse_args()  # here's where the options get parsed
 
-    try: #now try and get the debugging options
+    try:  # now try and get the debugging options
         loglevel = getattr(logging,options.debug)
-    except AttributeError: #set the log level
-        loglevel = {3:logging.CRITICAL,
-                    2:logging.ERROR,
-                    1:logging.WARNING,
-                    0:logging.INFO,
-                    -1:logging.DEBUG,
+    except AttributeError:  # set the log level
+        loglevel = {3: logging.CRITICAL,
+                    2: logging.ERROR,
+                    1: logging.WARNING,
+                    0: logging.INFO,
+                    -1: logging.DEBUG,
                     }[int(options.debug)]
 
     try:
-        open(options.logfile,'w') #try and open the default log file
+        open(options.logfile, 'w')  # try and open the default log file
     except:
         print "Unable to open log file '%s' for writing." % options.logfile
         logging.debug(
             "Unable to open log file '%s' for writing." % options.logfile)
 
-    setuplogging(loglevel,options.printtostdout,options.logfile)
+    setuplogging(loglevel, options.printtostdout, options.logfile)
 
     main(options)
