@@ -352,7 +352,11 @@ class NagObjHost(NagObjFlex):
         self.twod_coords                    =   NagObjSuperProp()      #x_coord,y_coord
         self.threed_coords                  =   NagObjSuperProp()      #x_coord,y_coord,z_coord
     def __repr__(self):
-        return("host." + self.host_name.value)
+        msg = ''
+        msg += ("host.'%s'" % self.host_name.value)
+        if msg == "host.''":
+            msg = self.dumpself_min()
+        return(msg)
 
 class NagObjService(NagObjFlex):
     ''' For making a clearly defined
@@ -409,10 +413,16 @@ class NagObjService(NagObjFlex):
         self.failure_prediction_enabled     =   NagObjSuperProp()      ##
         self.retry_check_interval           =   NagObjSuperProp()      ##
     def __repr__(self):
+        msg = ''
         if self.hostgroup_name.value == '':
-            return("service.%s.'%s'" % (self.host_name.value,self.service_description.value) )
+            msg += ("service.%s.'%s'" % (self.host_name.value,self.service_description.value) )
+            msg += ("\n\r\t\t\t\tHOSTGROUP_NAME: '%s'" % self.hostgroup_name.value)
         else:
-            return("service.%s.'%s'" % (self.hostgroup_name.value,self.service_description.value) )
+            print("Doing the hostgroup name....")
+            msg += ("service.%s.'%s'" % (self.hostgroup_name.value,self.service_description.value) )
+        if msg == "service..''":
+            msg = self.dumpself_min()
+        return(msg)
 
 class NagObjServiceGroup(NagObjFlex):
     ''' For making a clearly defined

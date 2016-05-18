@@ -1,7 +1,9 @@
-'''
+"""
 NagConf - Management Console Menu for modifying, building, and deleting
-Nagios configuration files. 
-'''
+Nagios configuration files.
+
+Usage: python nagconf.py -c /my-config/dir
+"""
 
 import logging
 import sys
@@ -12,16 +14,12 @@ import itertools
 import operator
 import pprint
 import re
-
-from operator import itemgetter
-from optparse import OptionParser, OptionGroup
+import ncClasses
+from ncClasses import NagObjFlex
 
 sversion = 'v0.1'
 scriptfilename = os.path.basename(sys.argv[0])
 defaultlogfilename = scriptfilename + '.log'
-
-import ncClasses
-from ncClasses import NagObjFlex
 
 welcomeMsg = (
 """
@@ -33,11 +31,13 @@ Welcome to the nagConf interactive CLI menu.
 """
 )
 
-def setuplogging(loglevel,printtostdout,logfile):
-    #pretty self explanatory. Takes options and sets up logging.
-    print "starting up with loglevel",loglevel,logging.getLevelName(loglevel)
+
+def setuplogging(loglevel, printtostdout, logfile):
+    """pretty self explanatory. Takes options and sets up logging.
+    """
+    print "starting up with loglevel", loglevel, logging.getLevelName(loglevel)
     logging.basicConfig(filename=logfile,
-                        filemode='w',level=loglevel, 
+                        filemode='w', level=loglevel,
                         format='%(asctime)s:%(levelname)s:%(message)s')
     if printtostdout:
         soh = logging.StreamHandler(sys.stdout)
@@ -45,10 +45,12 @@ def setuplogging(loglevel,printtostdout,logfile):
         logger = logging.getLogger()
         logger.addHandler(soh)
 
+
 def giveupthefunc():
-    #This function grabs the name of the current function
-    # this is used in most of the debugging/info/warning messages
-    # so I know where an operation failed
+    """This function grabs the name of the current function
+    this is used in most of the debugging/info/warning messages
+    so I know where an operation failed
+    """
     '''This code block comes from user "KindAll" on StackOverflow
     http://stackoverflow.com/a/4506081'''
     frame = inspect.currentframe(1)
@@ -65,9 +67,9 @@ def giveupthefunc():
                         return None
     return funcs[0] if funcs else None
 
+
 def get_config(options):
-    ''' Another sample function.
-    '''
+    """ Another sample functio """
     thisfunc = str(giveupthefunc())
     logging.debug(thisfunc + "Number of files in cfgdir = " + str(len(os.listdir(options.cfgdir))))
     numcfgfiles = 0
@@ -82,7 +84,7 @@ def get_config(options):
     files = [os.path.join(dir, f) for f in cfgfiles]
     cfglines = 0
     for f in files:
-        with open(f,'r') as cf:
+        with open(f, 'r') as cf:
             ''' now we're reading the files we actually care about.
             Since niether us nor Nagios cares about individual files
             we're going to strip out comments 
@@ -92,7 +94,8 @@ def get_config(options):
                 if '#' not in line:
                     cfgrawtext.append(line)
     logging.debug(thisfunc + "Number of lines of raw config: " + str(cfglines))
-    return(cfgrawtext)    
+    return cfgrawtext
+
 
 def classify_config(raw):
     ''' Takes raw Nagios config text and processes 
@@ -119,9 +122,9 @@ def classify_config(raw):
         r_end_match = re.search(r_end,line)
         if r_def_match or r_end_match:
             anchors.append(i)
-    #logging.debug(str(anchors))
+    # logging.debug(str(anchors))
     anchors.sort(reverse=True)
-    #logging.debug(str(anchors))
+    # logging.debug(str(anchors))
     allobjs = []
     while True:
         definition = ''
@@ -145,7 +148,7 @@ def classify_config(raw):
                 # first have to set the prop as a NagObjSuperProp() since this is new prop
                 setattr(currObj,prop,ncClasses.NagObjSuperProp(val))
         allobjs.append(currObj)
-        #print cfgformat.format(definition,prop,val)
+        # print cfgformat.format(definition,prop,val)
         if len(anchors) < 1:
             break
     cfgformat = '{0:30}{1}'
@@ -163,33 +166,34 @@ def morph(nco):
     classed = []
     for thing in nco.nagObjs:
         try:
-            #logging.debug("morph(): pre-morph thing classification: '%s'" % thing.classification.value)
+            # logging.debug("morph(): pre-morph thing classification: '%s'" % thing.classification.value)
             newthing = thing.morph_to_classed()
-            #logging.debug("morph(): post-morph newthing classification: '%s'" % newthing.classification.value)
+            # logging.debug("morph(): post-morph newthing classification: '%s'" % newthing.classification.value)
             if newthing is not None:
                 classed.append(newthing)
         except Exception as ar:
-            #print "--"
+            # print "--"
             logging.debug(str(ar))
-    #logging.debug("morph(): Finished running things.morph_to_classed(), attempting nco.dump_s(tats()...")
-    #logging.debug(nco.dump_stats())
-    #logging.debug("morph(): Finished nco.dump_stats(), now running nco.purge()....")
+    # logging.debug("morph(): Finished running things.morph_to_classed(), attempting nco.dump_s(tats()...")
+    # logging.debug(nco.dump_stats())
+    # logging.debug("morph(): Finished nco.dump_stats(), now running nco.purge()....")
     nco.purge()
-    #logging.debug("morph(): Finished nco.purge(), trying nco.dump_stats()...")
-    #logging.debug(nco.dump_stats())
+    # logging.debug("morph(): Finished nco.purge(), trying nco.dump_stats()...")
+    # logging.debug(nco.dump_stats())
     for thing in classed:
         nco.nagObjs.append(thing)
 
-    #logging.debug("Now leaving morph()...")
+    # logging.debug("Now leaving morph()...")
     return nco
 
-def dedupe_sort_list_of_dict(lod,dedupeField=None,orderField=None):
-    ''' Takes a list of dictionaries and 
+
+def dedupe_sort_list_of_dict(lod, dedupe_field=None, order_field=None):
+    """ Takes a list of dictionaries and
     eliminates duplicates that have the 
     same dedupeField.
     Based on a stackoverflow answer by 
     http://stackoverflow.com/users/885973/turkesh-patel
-    '''
+    """
     '''
     E.g.,
     templatelist = [    {'tpname': 'TPL-windows-server',    'idx': 1}, 
@@ -204,18 +208,18 @@ def dedupe_sort_list_of_dict(lod,dedupeField=None,orderField=None):
 
     '''
     # first dedupe
-    getvals = operator.itemgetter(dedupeField)
+    getvals = operator.itemgetter(dedupe_field)
     lod.sort(key=getvals)
     result = []
     for k, g in itertools.groupby(lod, getvals):
         result.append(g.next())
     # now sort
-    getvals = operator.itemgetter(orderField)
+    getvals = operator.itemgetter(order_field)
     # since Nagios inheritance works left to right and we're 'popping' to inherit...
     result.sort(key=getvals,reverse=True) 
     lod[:] = result
     msg = pprint.pformat(lod)
-    #logging.debug(msg + '\n')
+    # logging.debug(msg + '\n')
     return(lod)
 
 
@@ -237,13 +241,13 @@ def discover_template_chain(nco):
     '''
     for thing in nco.nagObjs:
         i_tpls = [] # holds indexed templates
-        seq = 0 # the index number so we can track inheritance priority.
+        seq = 0  # the index number so we can track inheritance priority.
         try:
             tpls = thing.use.value.split(',')
             count_usingtpls += 1
             for tp in tpls:
                 seq += 1
-                i_tpls.append({'idx':seq,'tpname':tp})
+                i_tpls.append({'idx': seq, 'tpname': tp})
             for thing2 in templates:
                 try:
                     if thing2.name.value in tpls:
@@ -251,7 +255,7 @@ def discover_template_chain(nco):
                         for a in tpls2:
                             tpls.append(a)
                             seq += 1
-                            i_tpls.append({'idx':seq,'tpname':a})
+                            i_tpls.append({'idx': seq, 'tpname': a})
                         for thing3 in templates:
                             try:
                                 if thing3.name.value in tpls2:
@@ -259,7 +263,7 @@ def discover_template_chain(nco):
                                     for b in tpls3:
                                         tpls.append(b)
                                         seq += 1
-                                        i_tpls.append({'idx':seq,'tpname':b})
+                                        i_tpls.append({'idx': seq, 'tpname': b})
                                     for thing4 in templates:
                                         try:
                                             if thing4.name.value in tpls3:
@@ -267,7 +271,7 @@ def discover_template_chain(nco):
                                                 for c in tpls4:
                                                     tpls.append(c)
                                                     seq += 1
-                                                    i_tpls.append({'idx':seq,'tpname':c})
+                                                    i_tpls.append({'idx': seq, 'tpname': c})
                                                 for thing5 in templates:
                                                     try:
                                                         if thing5.name.value in tpls4:
@@ -275,7 +279,7 @@ def discover_template_chain(nco):
                                                             for d in tpls5:
                                                                 tpls.append(d)
                                                                 seq += 1
-                                                                i_tpls.append({'idx':seq,'tpname':d})
+                                                                i_tpls.append({'idx': seq, 'tpname': d})
                                                             for thing6 in templates:
                                                                 try:
                                                                     if thing6.name.value in tpls5:
@@ -283,9 +287,10 @@ def discover_template_chain(nco):
                                                                         for e in tpls5:
                                                                             tpls.append(e)
                                                                             seq += 1
-                                                                            i_tpls.append({'idx':seq,'tpname':e})
+                                                                            i_tpls.append({'idx': seq, 'tpname': e})
                                                                 except:
-                                                                    logging.debug("reached max template chain depth (max 5)")
+                                                                    logging.debug("reached max template " +
+                                                                                  "chain depth (max 5)")
                                                     except:
                                                         pass
                                         except:
@@ -295,7 +300,7 @@ def discover_template_chain(nco):
                 except:
                     pass
             # remove duplicates
-            i_tpls = dedupe_sort_list_of_dict(i_tpls,dedupeField='tpname',orderField='idx')
+            i_tpls = dedupe_sort_list_of_dict(i_tpls, dedupe_field='tpname', order_field='idx')
             # now strip out extra blank space chars
             for tplll in i_tpls:
                 try:
@@ -303,21 +308,22 @@ def discover_template_chain(nco):
                 except:
                     pass
             thing.templateChain.value = i_tpls
-            #logging.debug("Discovered template chain: " )
-            #for tp in i_tpls:
-                #logging.debug("\t\t %s" % str(tp))
+            # logging.debug("Discovered template chain: " )
+            # for tp in i_tpls:
+                # logging.debug("\t\t %s" % str(tp))
             count += 1
         except Exception as el:
-            #Slogging.debug(str(el))
+            # Slogging.debug(str(el))
             pass
     logging.debug("discover_template_chain(): Discovered %s chains." % str(count))
     logging.debug("discover_template_chain(): Number of objects with the 'use' statement: %s" % str(count_usingtpls))
-    return(nco)
+    return nco
+
 
 def inherit_from_chain(nco):
-    ''' Takes the template chain and cycles through
+    """ Takes the template chain and cycles through
     it in reverse overriding properties. 
-    '''
+    """
     # lists to hold templates and users of templates
     tpls = []
     tpls_strings = []
@@ -328,7 +334,7 @@ def inherit_from_chain(nco):
             if obj.name.value and obj.use.value:
                 # go ahead and strip out spaces in the object's name field
                 obj.name.value = obj.name.value.rstrip(' ')
-                #logging.debug("Found template AND user with name = '%s'" % obj.name.value)
+                # logging.debug("Found template AND user with name = '%s'" % obj.name.value)
                 tplsAndUsers.append(obj)
                 tpls_strings.append(obj.name.value)
         except:
@@ -338,10 +344,10 @@ def inherit_from_chain(nco):
             # only templates have the .name property
             if obj.name.value and obj.name.value not in tpls_strings:
                 obj.name.value = obj.name.value.rstrip(' ')
-                #logging.debug("Found original template with name = %s" % obj.name.value)
+                # logging.debug("Found original template with name = %s" % obj.name.value)
                 tpls.append(obj)
         except Exception as er:
-            #logging.debug("Exception filtering templates: " + str(er))
+            # logging.debug("Exception filtering templates: " + str(er))
             pass
         try:
             # only things using templates have the .use property
@@ -360,13 +366,13 @@ def inherit_from_chain(nco):
         # if they have a template chain...
         logging.debug("Working on template with name: " + user.name.value)
         if len(user.templateChain.value) >= 1:
-            #logging.debug("\tlen(user.templateChain.value): " + str(len(user.templateChain.value)))
+            # logging.debug("\tlen(user.templateChain.value): " + str(len(user.templateChain.value)))
             while True:
                 try:
                     working = user.templateChain.value.pop()
-                    #logging.debug("\tSearching for template with name: '%s' ..." % working.get('tpname'))
+                    # logging.debug("\tSearching for template with name: '%s' ..." % working.get('tpname'))
                 except Exception as dog:
-                    #logging.debug("\tException popping from templateChain: " + str(dog))
+                    # logging.debug("\tException popping from templateChain: " + str(dog))
                     break
                 # cycle through the template list
                 found = False
@@ -377,16 +383,16 @@ def inherit_from_chain(nco):
                         # find all set properties from the template, make that list attr_to_copy
                         attrs_to_copy = tpl.display_filter(transfer=True)
                         
-                        #logging.debug("\t\tCopying properties from: " + working.get('tpname'))
+                        # logging.debug("\t\tCopying properties from: " + working.get('tpname'))
                         for prop in attrs_to_copy:
                             val = getattr(getattr(tpl,prop),'value')
                             if val is not '':
                                 msg = "\t\t\t%s::%s (%s) came from %s" % (working.get('idx'),prop,val,tpl.name.value)
                                 user.inheritanceLog.value.append(msg)
                                 try:
-                                    existingValue = getattr(getattr(user,prop),'value',val)
+                                    existingValue = getattr(getattr(user,prop), 'value', val)
                                     if existingValue == '':
-                                        raise(Exception)
+                                        raise Exception
                                     elif '+' in existingValue:
                                         
                                         # must honor nagios additive property
@@ -397,50 +403,52 @@ def inherit_from_chain(nco):
                                         # set the new value
                                         setattr(getattr(user,prop),'value',newValue)
                                         # record the history chain
-                                        tHist = getattr(getattr(user,prop),'inheritanceHistory')
+                                        tHist = getattr(getattr(user,prop), 'inheritanceHistory')
                                         tHist.append(tpl.name.value)
-                                        setattr(getattr(user,prop),'inheritanceHistory',tHist)
+                                        setattr(getattr(user,prop), 'inheritanceHistory', tHist)
                                     else:                                    
-                                        #logging.debug("\t\t\t\tFound existing propery '%s', tracking chain but not changing..." % prop)
+                                        # logging.debug("\t\t\t\tFound existing propery '%s',
+                                        # tracking chain but not changing..." % prop)
                                         # pull in existing inheritanceHistory if any
-                                        tHist = getattr(getattr(user,prop),'inheritanceHistory')
+                                        tHist = getattr(getattr(user, prop), 'inheritanceHistory')
                                         tHist.append(tpl.name.value)
-                                        setattr(getattr(user,prop),'inheritanceHistory',tHist)
+                                        setattr(getattr(user, prop), 'inheritanceHistory', tHist)
                                 except:
-                                    #logging.debug("\t\t\t\tNo pre-existing property or value blank for '%s', creating new..." % prop)
-                                    tempObjSuperProp = ncClasses.NagObjSuperProp(val,explicitInheritance=True,donor=tpl.name.value)
-                                    setattr(user,prop,tempObjSuperProp)
+                                    tempObjSuperProp = ncClasses.NagObjSuperProp(val,
+                                                                                 explicitInheritance=True,
+                                                                                 donor=tpl.name.value)
+                                    setattr(user, prop, tempObjSuperProp)
                                     count_copies += 1
-                #logging.debug('\t\t\t\tFound: ' + str(found))
+                # logging.debug('\t\t\t\tFound: ' + str(found))
             general =  user.classification.value
-            #logging.debug("History chain for '%s' with name '%s': " % (general,user.name.value))
+            # logging.debug("History chain for '%s' with name '%s': " % (general,user.name.value))
             for propString in user.display_filter(transfer=True):
-                prop = getattr(user,propString)
+                prop = getattr(user, propString)
                 try:
                     histFormat = "{0:55}{1:100}{2:}"
-                    ider = "'%s.%s'" % (general,propString)
+                    ider = "'%s.%s'" % (general, propString)
                     hist = "'" + str(prop.return_history()) + "'"
-                    msg = histFormat.format(ider,"'" + prop.value + "'",hist)
-                    #logging.debug('\t\t' + msg)
+                    msg = histFormat.format(ider, "'" + prop.value + "'", hist)
+                    # logging.debug('\t\t' + msg)
                 except:
                     pass
     # now loop through all the rest of the objects
     for user in users:
-        #logging.debug("Working on user with uid: " + user.get_uid())
+        # logging.debug("Working on user with uid: " + user.get_uid())
         # if they have a template chain...
         try:
             user.name.value
-            #logging.debug("User has name '%s', which means it's a template so skipping..." % user.name.value)
+            # logging.debug("User has name '%s', which means it's a template so skipping..." % user.name.value)
             continue
         except:
             if len(user.templateChain.value) >= 1:
-                #logging.debug("\tlen(user.templateChain.value): " + str(len(user.templateChain.value)))
+                # logging.debug("\tlen(user.templateChain.value): " + str(len(user.templateChain.value)))
                 while True:
                     try:
                         working = user.templateChain.value.pop()
-                        #logging.debug("\tSearching for template with name: '%s' ..." % working.get('tpname'))
+                        # logging.debug("\tSearching for template with name: '%s' ..." % working.get('tpname'))
                     except Exception as dog:
-                        #logging.debug("\tException popping from templateChain: " + str(dog))
+                        # logging.debug("\tException popping from templateChain: " + str(dog))
                         break
                     # cycle through the template list
                     found = False
@@ -450,16 +458,19 @@ def inherit_from_chain(nco):
                             found = True
                             # find all set properties from the template, make that list attr_to_copy
                             attrs_to_copy = tpl.display_filter(transfer=True)
-                            #logging.debug("\t\tCopying properties from: " + working.get('tpname'))
+                            # logging.debug("\t\tCopying properties from: " + working.get('tpname'))
                             for prop in attrs_to_copy:
-                                val = getattr(getattr(tpl,prop),'value')
+                                val = getattr(getattr(tpl, prop), 'value')
                                 if val is not '':
-                                    msg = "\t\t\t%s::%s (%s) came from %s" % (working.get('idx'),prop,val,tpl.name.value)
+                                    msg = "\t\t\t%s::%s (%s) came from %s" % (working.get('idx'),
+                                                                              prop,
+                                                                              val,
+                                                                              tpl.name.value)
                                     user.inheritanceLog.value.append(msg)
                                     try:
-                                        existingValue = getattr(getattr(user,prop),'value',val)
+                                        existingValue = getattr(getattr(user, prop), 'value', val)
                                         if existingValue == '':
-                                            raise(Exception)
+                                            raise Exception
                                         elif '+' in existingValue:
                                             #print("found a +")
                                             # must honor nagios additive property
@@ -467,76 +478,90 @@ def inherit_from_chain(nco):
                                             existingValue = existingValue.strip('+')
                                             newValue = existingValue + ',' + val
                                             # set the new value
-                                            setattr(getattr(user,prop),'value',newValue)
+                                            setattr(getattr(user, prop), 'value', newValue)
                                             # record the history chain
-                                            tHist = getattr(getattr(user,prop),'inheritanceHistory')
+                                            tHist = getattr(getattr(user, prop), 'inheritanceHistory')
                                             tHist.append(tpl.name.value)
-                                            setattr(getattr(user,prop),'inheritanceHistory',tHist)
-                                        else:                                    
-                                            #logging.debug("\t\t\t\tFound existing propery '%s', tracking chain but not changing..." % prop)
+                                            setattr(getattr(user, prop), 'inheritanceHistory', tHist)
+                                        else:
                                             # pull in existing inheritanceHistory if any
-                                            tHist = getattr(getattr(user,prop),'inheritanceHistory')
+                                            tHist = getattr(getattr(user, prop), 'inheritanceHistory')
                                             tHist.append(tpl.name.value)
-                                            setattr(getattr(user,prop),'inheritanceHistory',tHist)
+                                            setattr(getattr(user, prop), 'inheritanceHistory', tHist)
                                     except:
-                                        #logging.debug("\t\t\t\tNo pre-existing property or value blank for '%s', creating new..." % prop)
-                                        tempObjSuperProp = ncClasses.NagObjSuperProp(val,explicitInheritance=True,donor=tpl.name.value)
-                                        setattr(user,prop,tempObjSuperProp)
+                                        tempObjSuperProp = ncClasses.NagObjSuperProp(val,
+                                                                                     explicitInheritance=True,
+                                                                                     donor=tpl.name.value)
+                                        setattr(user, prop, tempObjSuperProp)
                                         count_copies += 1
-                    #logging.debug('\t\t\t\tFound: ' + str(found))
+                    # logging.debug('\t\t\t\tFound: ' + str(found))
                 general = user.classification.value
-                #logging.debug("History chain for '%s': " % user.get_uid())
+                # logging.debug("History chain for '%s': " % user.get_uid())
                 for propString in user.display_filter(transfer=True):
                     prop = getattr(user,propString) 
                     try:
                         histFormat = "{0:55}{1:100}{2:}"
                         ider = "'%s.%s'" % (general,propString)
                         hist = "'" + str(prop.return_history()) + "'"
-                        msg = histFormat.format(ider,"'" + prop.value + "'",hist)
-                        #logging.debug('\t\t' + msg)
+                        msg = histFormat.format(ider, "'" + prop.value + "'", hist)
+                        # logging.debug('\t\t' + msg)
                     except:
                         pass
 
-            #for logentry in user.inheritanceLog.value:
-                #logging.debug("\t\t\t\t" + logentry)
-    #
-
     logging.debug("inherit_from_chain(): Number of object property copies: %s" % str(count_copies))
-    return(nco)
+    return nco
+
 
 def get_stats(nco):
-    '''
+    """
     Gets statistics about the current working object database.
-    '''
+    """
     myfunc = str(giveupthefunc())
     returnMsg = 'stats: '
     returnMsg += "\n\r"
     returnMsg += nco.dump_stats()
-    return(returnMsg)
+    return returnMsg
+
 
 def helpmenu():
-    ''' This function contains all of the menu context helptext and handles
+    """ This function contains all of the menu context helptext and handles
     the display of the 'h' command
-    '''
-    #define the main body of the help 
+    """
+    # define the main body of the help
     helptext = (
     """
-===========================HELP MENU===========================================
+=================================HELP MENU===========================================
 |                     LOREM IPSUM
 |
-| cmd 'i' will list loaded nodes info
-| cmd 'h' will print this help
-| cmd 'f+<filename>.cfg' will generate nagios config file compact
-| cmd 'fe+<filename>.cfg' will generate nagios config file with expanded inheritance
-| cmd 'l+<keyword>' will display all objects in memory of that keyword (e.g., 'host')
+| cmd 'i'                   will list loaded nodes info
+|
+| cmd 'h'                   will print this help
+|
+| cmd 'f+<filename>.cfg'    will generate nagios config file compact
+|
+| cmd 'fe+<filename>.cfg'   will generate nagios config file with expanded inheritance
+|
+| cmd 'l+<keyword>'         will display all objects in memory of that 
+|                           keyword (e.g., 'host')
+|
+| cmd 's+<contactname>'     will show all services and hosts with
+|                           notifications going to that contact.
 | cmd '+++' will exit
-===========================HELP MENU===========================================
+==================================HELP MENU===========================================
 """
     )
     #and finally, display the text
     print(helptext)
 
-def subscriptions(nco,contact_name):
+
+def out_file(message):
+    """ Writes the message out to filename.
+    """
+    with open('outfile.txt', 'wb') as f:
+        f.write(message)
+
+
+def subscriptions(nco, contact_name):
     msg = ""
     person = contact_name
     groups = []
@@ -547,40 +572,39 @@ def subscriptions(nco,contact_name):
                 
     msg += "'%s' is a member of the following groups:\n\r" % contact_name
     for group in groups:
-        msg += '\t' + group
-    msg += "'%s' is set to recive notifications from the following objects:\n\r"
+        msg += '\t' + group + '\n\r'
+    msg += ("'%s' is set to recive notifications from the following objects:\n\r" % contact_name)
     for n in nco.nagObjs:
         try:
-            #print n.contacts.value
             if person in n.contacts.value:
                 msg += '\t' + str(n) + '\n\r'
         except:
             pass
         try:
-            #print n.contact_groups.value
             contact_groups = n.contact_groups.value.split(',')
             for contact_group in contact_groups:
                 if contact_group in groups:
                     msg += '\t' + str(n) + '\n\r'
         except:
             pass
-    return(msg)
+    return msg
 
 
-def display_basic(nco,classy):
+def display_basic(nco, classy):
     count = 0
     msg = ""
     for obj in nco.nagObjs:
         if obj.classification.value == classy:
             msg += obj.gen_nag_text(expand=False)
-            count+=1
-    msg +=("-=-=-=-=-=-=-=-=-=-=-  NUMBER OF RESULTS:       %s     -=-=-=-=-=-=-=-=-=-=- " % str(count))
-    return(msg)
+            count += 1
+    msg += ("-=-=-=-=-=-=-=-=-=-=-  NUMBER OF RESULTS:       %s     -=-=-=-=-=-=-=-=-=-=- " % str(count))
+    return msg
+
 
 def menu(options,nco):
-    '''
+    """
     Interactive menu for searching and modifying config.
-    '''
+    """
     myfunc = str(giveupthefunc())
     print(welcomeMsg)
     while True:
@@ -654,9 +678,12 @@ def menu(options,nco):
         elif cps:
             contact_name = cps.group('contact_name')
             logging.debug("Parsed keyword for contact_name search: '%s'" % contact_name)
-            print(subscriptions(nco,contact_name))
+            message = (subscriptions(nco,contact_name))
+            print(message)
+            out_file(message)
         elif cpe:
             experiment(nco)
+
 
 def main(options):
     ''' The main() method. Program starts here.
@@ -712,6 +739,7 @@ def main(options):
     '''
 
     #nco.gen_cfg_file('nagconf.cfg')
+
 
 if __name__ == '__main__':
     '''This main section is mostly for parsing arguments to the 
